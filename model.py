@@ -11,12 +11,14 @@ import numpy as np
 
 import optparse
 
+def exit():
+	import sys
+	sys.exit()
 
+	
 class Unit(nn.Module):
     def __init__(self,in_channels,out_channels):
         super(Unit,self).__init__()
-        
-
         self.conv = nn.Conv2d(in_channels=in_channels,kernel_size=3,out_channels=out_channels,stride=1,padding=1)
         self.bn = nn.BatchNorm2d(num_features=out_channels)
         self.relu = nn.ReLU()
@@ -168,12 +170,12 @@ def test():
         outputs = model(images)
         _,prediction = torch.max(outputs.data, 1)
         # prediction = prediction.cpu().numpy()
-        test_acc += torch.sum(prediction == labels.data)
+        test_acc += torch.sum(prediction == labels.data).float()
         
 
 
     #Compute the average acc and loss over all 10000 test images
-    test_acc = test_acc / 10000
+    test_acc = test_acc / len(test_loader.dataset)
 
     return test_acc
 
@@ -204,15 +206,14 @@ def train(num_epochs):
 
             train_loss += loss.cpu().item() * images.size(0)
             _, prediction = torch.max(outputs.data, 1)
-            
-            train_acc += torch.sum(prediction == labels.data)
+            train_acc += torch.sum(prediction == labels.data).float()
 
         #Call the learning rate adjustment function
         adjust_learning_rate(epoch)
 
         #Compute the average acc and loss over all 50000 training images
-        train_acc = train_acc / len(train_loader.dataset)
-        train_loss = train_loss / len(test_loader.dataset)
+        train_acc = train_acc / float(len(train_loader.dataset))
+        train_loss = train_loss / len(train_loader.dataset)
 
         #Evaluate on the test set
         test_acc = test()
