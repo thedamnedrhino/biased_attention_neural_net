@@ -11,15 +11,18 @@ import numpy as np
 
 import optparse
 
+print("CCCCCCCC")
 def exit():
 	import sys
 	sys.exit()
 
-	
+KERNEL_SIZE=5	
+HIDDEN_CHANNELS=12
+
 class Unit(nn.Module):
     def __init__(self,in_channels,out_channels):
         super(Unit,self).__init__()
-        self.conv = nn.Conv2d(in_channels=in_channels,kernel_size=3,out_channels=out_channels,stride=1,padding=1)
+        self.conv = nn.Conv2d(in_channels=in_channels,kernel_size=KERNEL_SIZE,out_channels=out_channels,stride=1,padding=KERNEL_SIZE//2)
         self.bn = nn.BatchNorm2d(num_features=out_channels)
         self.relu = nn.ReLU()
 
@@ -46,10 +49,11 @@ class SimpleNet(nn.Module):
 
         self.unit3 = Unit(in_channels=channels, out_channels=channels)
         self.unit4 = Unit(in_channels=channels, out_channels=channels)
-        self.pool2 = nn.MaxPool2d(kernel_size=2)
+        # self.pool2 = nn.MaxPool2d(kernel_size=2)
         self.avgpool = nn.AvgPool2d(kernel_size=2)
 
-        self.pools = [2, 2, 2]
+        # self.pools = [2, 2, 2]
+        self.pools = [2, 2]
 
         # self.pool2 = nn.MaxPool2d(kernel_size=2)
 
@@ -77,7 +81,7 @@ class SimpleNet(nn.Module):
         # self.net = nn.Sequential(self.unit1, self.unit2, self.unit3, self.pool1, self.unit4, self.unit5, self.unit6
                                  # ,self.unit7, self.pool2, self.unit8, self.unit9, self.unit10, self.unit11, self.pool3,
                                  # self.unit12, self.unit13, self.unit14, self.avgpool)
-        self.net = nn.Sequential(self.unit1, self.unit2, self.pool1, self.unit3, self.unit4, self.pool2, self.avgpool)
+        self.net = nn.Sequential(self.unit1, self.unit2, self.pool1, self.unit3, self.unit4, self.avgpool)
         self.fc = nn.Linear(in_features=self.num_features(),out_features=num_classes)
 
     def num_features(self):
@@ -121,7 +125,7 @@ test_loader = dataset.create_dataloader('valid', batch_size)
 cuda_avail = torch.cuda.is_available()
 
 #Create model, optimizer and loss function
-model = SimpleNet()
+model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 
 if cuda_avail:
     model.cuda()
@@ -154,7 +158,7 @@ def adjust_learning_rate(epoch):
 
 
 def save_models(epoch):
-    torch.save(model.state_dict(), "convnet_epoch_{}.model".format(epoch))
+    torch.save(model.state_dict(), "convnet.model".format(epoch))
     print("Checkpoint saved")
 
 def test():
