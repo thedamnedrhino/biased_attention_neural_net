@@ -61,5 +61,5 @@ if __name__ == '__main__':
     images = sorted(IMAGES, key=lambda x: x.label)
     igs = images
     def s(n):
-        x = igs(n).show()
+        x = igs[n].show()
     
