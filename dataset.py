@@ -1,7 +1,9 @@
-import torch
 import data
+
 import torch
 from torchvision import transforms
+import numpy as np
+
 
 class Dataset(torch.utils.data.Dataset):
   'Characterizes a dataset for PyTorch'
@@ -22,12 +24,8 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.images)
 
   def __getitem__(self, index):
-        'Generates one sample of data'
-        # Select sample
         image = self.images[index]
-
-        # Load data and get label
-        X = self.transformer(torch.tensor(image.shaped()))
+        X = self.transformer(np.array(image.shaped()))
         y = image.label
 
         return X, y
@@ -43,4 +41,8 @@ if __name__ == '__main__':
   l = create_dataloader()
   images, labels = next(iter(l))
   print(labels)
+  print(images[0].size())
+  i = images[0]
+  i = transforms.ToPILImage()(i)
+  i.show()
 
