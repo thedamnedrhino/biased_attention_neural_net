@@ -51,8 +51,8 @@ def augment(d, augment_label):
 
   return d + [data.Image(i, augment_label) for i in s]
 
-def create_dataloader(set='train', batch_size=10, augment=False, augment_label=2):
-  d = data.get_data(set)
+def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment=False, augment_label=2):
+  d = data.get_data(datadir, set)
   if augment:
     augmented = augment(d, augment_label)
   dset = Dataset(d, set)

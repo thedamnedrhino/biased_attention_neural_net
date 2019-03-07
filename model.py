@@ -208,11 +208,13 @@ if __name__ == "__main__":
 	optparser.add_option("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
 	optparser.add_option("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
 	optparser.add_option("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_option("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
 	epochs = int(opts.epochs)
 	KERNEL_SIZE = int(opts.kernelsize)
 	HIDDEN_CHANNELS = int(opts.hiddenchannels)
+	datadir = opts.datadir
 
 	#Define transformations for the training set, flip the images randomly, crop out and apply mean and std normalization
 	train_transformations = transforms.Compose([
@@ -231,8 +233,8 @@ if __name__ == "__main__":
 	])
 
 	batch_size = 32
-	train_loader = dataset.create_dataloader('train', batch_size)
-	test_loader = dataset.create_dataloader('valid', batch_size)
+	train_loader = dataset.create_dataloader(datadir, 'train', batch_size)
+	test_loader = dataset.create_dataloader(datadir, 'valid', batch_size)
 
 	#Check if gpu support is available
 	cuda_avail = torch.cuda.is_available()

@@ -39,11 +39,11 @@ class Image:
             self.shaped_img = self.shape()
         return self.shaped_img
     
-def get_data(dataset='train'):
+def get_data(datadir='./datasets', dataset='train'):
     """
     param dataset: 'train', 'valid'
     """
-    filename = './datasets/' + dataset + 'set.pickle'
+    filename = datadir + '/' + dataset + 'set.pickle'
     with open(filename, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
         data = dict['data']
