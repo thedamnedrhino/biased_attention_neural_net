@@ -219,7 +219,10 @@ if __name__ == "__main__":
 	HIDDEN_CHANNELS = int(opts.hiddenchannels)
 	datadir = opts.datadir
 	transformers = opts.transformers
-	transformers = transformers.split(',') if transformers is not None else None
+	if transformers == '-':
+		transformers = []
+	else:
+		transformers = transformers.split(',') if transformers is not None else None
 
 	#Define transformations for the training set, flip the images randomly, crop out and apply mean and std normalization
 	train_transformations = transforms.Compose([
