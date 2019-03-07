@@ -19,6 +19,7 @@ def exit():
 
 KERNEL_SIZE=5	
 HIDDEN_CHANNELS=12
+MODEL_NAME='convnet.model'
 
 class Unit(nn.Module):
     def __init__(self,in_channels,out_channels):
@@ -127,8 +128,8 @@ def adjust_learning_rate(epoch):
 
 
 
-def save_models(epoch):
-    torch.save(model.state_dict(), "convnet.model".format(epoch))
+def save_models(epoch, model_name=MODEL_NAME):
+    torch.save(model.state_dict(), model_name.format(epoch))
     print("Checkpoint saved")
 
 def test():
@@ -153,7 +154,7 @@ def test():
 
     return test_acc
 
-def train(num_epochs):
+def train(num_epochs, model_name=MODEL_NAME):
     best_acc = 0.0
 
     for epoch in range(num_epochs):
@@ -194,7 +195,7 @@ def train(num_epochs):
 
         # Save the model if the test acc is greater than our current best
         if test_acc > best_acc:
-            save_models(epoch)
+            save_models(epoch, model_name)
             best_acc = test_acc
 
 
@@ -209,6 +210,7 @@ if __name__ == "__main__":
 	optparser.add_option("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
 	optparser.add_option("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
 	optparser.add_option("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
+	optparser.add_option("-m", "--model-name", dest="modelname", default=MODEL_NAME, help="the name to save the best model under")
 	optparser.add_option("-t", "--transformers", dest="transformers", default=None, help="the transformers to use from {" + ', '.join(dataset.TRANSFORMERS.keys()) + "}")
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
@@ -252,4 +254,4 @@ if __name__ == "__main__":
 	loss_fn = nn.CrossEntropyLoss()
 
 
-	train(epochs)
+	train(epochs, opts.modelname)
