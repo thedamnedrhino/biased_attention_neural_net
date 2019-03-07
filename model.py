@@ -12,10 +12,23 @@ import pickle
 
 
 """
-This is a convulational network with 4 convulational layers and two pool layers. 
+This is a convulational network with 4 convulational layers and two pool layers after every two conv layers. 
 Each convulational layer has 12 filters. It is inspired by https://heartbeat.fritz.ai/basics-of-image-classification-with-pytorch-2f8973c51864
-For the data imbalance problem, I augmented the data to include transformed versions of the the images from the third category, such that there would 
+For the DATA IMBALANCE PROBLEM, I augmented the data to include transformed versions of the the images from the third category, such that there would 
 be an equal number of instances of each class.
+Solving the data imbalance got the accuracy on the validation set from 0.75 to 0.80. The output file can be found as 'output.txt'.
+The full runnable python code along with a readme can be found at  https://github.com/thedamnedrhino/first_image_classifier.
+
+ADDITIONAL NOTES AND OBSERVATIONS:
+- Increasing the epochs to train on did not have an effect, after reaching a certain value. When I added random transformations to the images
+this changed and the accuracy kept increasing for longer. This was to be expected.
+
+- The network was trained only on the train data for generating the test labels. I did also merge the validation set into the training set to see what difference
+it would make on the test labels. Interestingly even though training on the merged trained-validation dataset gets the accuracy on the 
+training set and the validation set from ~0.80 BOTH, to 0.66 and 0.88 on the sets respectively, the labels generated for the test data
+have minimal differences: less than 10 cases. I checked those cases manually and saw that the number that the network trained only on the train data
+got right, was equal to the number that the network trained with the merged train and validation data got right, and they should have similar performances
+on the test set.
 """
 
 KERNEL_SIZE=5	
