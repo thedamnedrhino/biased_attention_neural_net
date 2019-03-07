@@ -16,6 +16,8 @@ class Dataset(torch.utils.data.Dataset):
     ts = [
       transforms.ToPILImage(),
       # transforms.RandomHorizontalFlip(),
+      transforms.RandomHorizontalFlip(p=0.5),
+      transforms.RandomRotation(20),
       transforms.ToTensor(),
       # transforms.Normalize(mean=[0.485, 0.456, 0.406],
       #                            std=[0.229, 0.224, 0.225])
@@ -39,8 +41,6 @@ def augment(d, augment_label):
   transforms.ColorJitter(brightness=2),
   transforms.ColorJitter(contrast=2),
   transforms.ColorJitter(saturation=2),
-  transforms.RandomHorizontalFlip(p=1),
-  transforms.RandomRotation(20)
   ]
   transformer = transformer.Compose([
     transformers.ToPILImage(),
