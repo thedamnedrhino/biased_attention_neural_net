@@ -52,6 +52,15 @@ def get_data(datadir='./datasets', dataset='train'):
     images = [Image(data[i], labels[i]) for i in range(len(data))]
     IMAGES = images if IMAGES is None else IMAGES
     return images
+
+def get_testdata(datadir='./datasets'):
+    filename = datadir + '/' + 'test' + 'set.pickle'
+    with open(filename, 'rb') as fo:
+        dict = pickle.load(fo, encoding='bytes')
+        data = dict['data']
+    images = [Image(data[i], 10) for i in range(len(data))]
+    return images
+
                 
 def init():
     get_data()

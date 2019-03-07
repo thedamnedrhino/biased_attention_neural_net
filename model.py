@@ -11,11 +11,13 @@ import numpy as np
 
 import optparse
 
-print("CCCCCCCC")
 
-def exit():
-	import sys
-	sys.exit()
+"""
+This is a convulational network with 4 convulational layers and two pool layers. 
+Each convulational layer has 12 filters. It is inspired by https://heartbeat.fritz.ai/basics-of-image-classification-with-pytorch-2f8973c51864
+For the data imbalance problem, I augmented the data to include transformed versions of the the images from the third category, such that there would 
+be an equal number of instances of each class.
+"""
 
 KERNEL_SIZE=5	
 HIDDEN_CHANNELS=12
@@ -231,6 +233,28 @@ def load_checkpoint(model, checkpoint_name):
 	else:
 		model.load_state_dict(torch.load(checkpoint_name))
 
+def test(model, test_loader):
+	ls = []
+	model.eval()
+	import pickle
+	for i, (images, labels) in enumerate(test_loader):
+		outputs = model(images)
+		_,prediction = torch.max(outputs.data, 1)
+		print(prediction)
+
+		with open(datadir+'/testlabel.pickle', 'rb') as f:
+			labels = pickle.load(f)
+
+		for i in range(len(labels)):
+			labels[i] = prediction.data[i].item()
+
+		with open(datadir+'/testlabel.pickle', 'wb') as f:
+			pickle.dump(labels, f)
+
+		with open(datadir+'/testlabel.pickle', 'rb') as f:
+			print(pickle.load(f))
+
+
 if __name__ == "__main__":
 	optparser = optparse.OptionParser()
 	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
@@ -282,6 +306,7 @@ if __name__ == "__main__":
 	batch_size = 32
 	train_loader = dataset.create_dataloader(datadir, 'train', batch_size, transformers=transformers)
 	validate_loader = dataset.create_dataloader(datadir, 'valid', batch_size, transformers=[])
+	test_loader = dataset.create_testloader()
 
 	#Check if gpu support is available
 	cuda_avail = torch.cuda.is_available()
@@ -300,5 +325,7 @@ if __name__ == "__main__":
 
 	if not validate_only and not test_only:
 		train(epochs, opts.modelname)
-	elif validate_only:
+	if validate_only:
 		validate()
+	if test_only:
+		test(model, test_loader)

@@ -66,6 +66,11 @@ def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment=
   dset = Dataset(d, set, transformers=transformers)
   dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=batch_size, shuffle=True)
   return dloader
+def create_testloader(datadir='./datasets'):
+  d = data.get_testdata(datadir)
+  dset = Dataset(d, 'test', transformers=[])
+  dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=len(dset), shuffle=False)
+  return dloader
 
 
 if __name__ == '__main__':
