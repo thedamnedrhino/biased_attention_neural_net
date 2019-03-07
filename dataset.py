@@ -32,8 +32,29 @@ class Dataset(torch.utils.data.Dataset):
 
         return X, y
 
-def create_dataloader(set='train', batch_size=10):
+def augment(d, augment_label):
+  print ("augmenting++++++++++++++")
+  s = [i.shaped() for i in data if i.label == augment_label]
+  ts = [
+  transforms.ColorJitter(brightness=2),
+  transforms.ColorJitter(contrast=2),
+  transforms.ColorJitter(saturation=2),
+  transforms.RandomHorizontalFlip(p=1),
+  transforms.RandomRotation(20)
+  ]
+  transformer = transformer.Compose([
+    transformers.ToPILImage(),
+    transformers.RandomChoice(ts)
+  ])
+  for idx, i in enumerate(s):
+    s[idx] = transformer(i)
+
+  return d + [data.Image(i, augment_label) for i in s]
+
+def create_dataloader(set='train', batch_size=10, augment=False, augment_label=2):
   d = data.get_data(set)
+  if augment:
+    augmented = augment(d, augment_label)
   dset = Dataset(d, set)
   dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=batch_size, shuffle=True)
   return dloader

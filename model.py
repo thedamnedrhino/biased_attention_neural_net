@@ -12,6 +12,7 @@ import numpy as np
 import optparse
 
 print("CCCCCCCC")
+
 def exit():
 	import sys
 	sys.exit()
@@ -101,37 +102,6 @@ class SimpleNet(nn.Module):
         output = self.fc(output)
         return output
 
-#Define transformations for the training set, flip the images randomly, crop out and apply mean and std normalization
-train_transformations = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomCrop(32,padding=4),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-
-#Define transformations for the test set
-test_transformations = transforms.Compose([
-   transforms.ToTensor(),
-    transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-
-])
-
-batch_size = 32
-train_loader = dataset.create_dataloader('train', batch_size)
-test_loader = dataset.create_dataloader('valid', batch_size)
-
-#Check if gpu support is available
-cuda_avail = torch.cuda.is_available()
-
-#Create model, optimizer and loss function
-model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
-
-if cuda_avail:
-    model.cuda()
-
-optimizer = Adam(model.parameters(), lr=0.001,weight_decay=0.0001)
-loss_fn = nn.CrossEntropyLoss()
 
 #Create a learning rate adjustment function that divides the learning rate by 10 every 30 epochs
 def adjust_learning_rate(epoch):
@@ -235,8 +205,46 @@ def train(num_epochs):
 if __name__ == "__main__":
 	optparser = optparse.OptionParser()
 	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
-	optparser.add_option("-n", "--num-train", dest="numtrain", default=None, help="number of training samples to train on")
+	optparser.add_option("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
+	optparser.add_option("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
+	optparser.add_option("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
 	epochs = int(opts.epochs)
+	KERNEL_SIZE = int(opts.kernelsize)
+	HIDDEN_CHANNELS = int(opts.hiddenchannels)
+
+	#Define transformations for the training set, flip the images randomly, crop out and apply mean and std normalization
+	train_transformations = transforms.Compose([
+	    transforms.RandomHorizontalFlip(),
+	    transforms.RandomCrop(32,padding=4),
+	    transforms.ToTensor(),
+	    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+	])
+
+
+	#Define transformations for the test set
+	test_transformations = transforms.Compose([
+	   transforms.ToTensor(),
+	    transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+
+	])
+
+	batch_size = 32
+	train_loader = dataset.create_dataloader('train', batch_size)
+	test_loader = dataset.create_dataloader('valid', batch_size)
+
+	#Check if gpu support is available
+	cuda_avail = torch.cuda.is_available()
+
+	#Create model, optimizer and loss function
+	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
+
+	if cuda_avail:
+	    model.cuda()
+
+	optimizer = Adam(model.parameters(), lr=0.001,weight_decay=0.0001)
+	loss_fn = nn.CrossEntropyLoss()
+
+
 	train(epochs)
