@@ -1,0 +1,38 @@
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) openmpi/2.1.1
+
+CCCCCCCC
+Checkpoint saved
+Epoch 0, Train Accuracy: 0.5732222199440002 , TrainLoss: 0.8542628440856933 , Test Accuracy: 0.5726666450500488
+Checkpoint saved
+Epoch 1, Train Accuracy: 0.6544444561004639 , TrainLoss: 0.7211567736201816 , Test Accuracy: 0.6646666526794434
+Epoch 2, Train Accuracy: 0.6946666836738586 , TrainLoss: 0.6699391560024686 , Test Accuracy: 0.6200000047683716
+Epoch 3, Train Accuracy: 0.7051111459732056 , TrainLoss: 0.6372501168515947 , Test Accuracy: 0.6323333382606506
+Checkpoint saved
+Epoch 4, Train Accuracy: 0.7223333120346069 , TrainLoss: 0.6124777473873563 , Test Accuracy: 0.6940000057220459
+Epoch 5, Train Accuracy: 0.7353333234786987 , TrainLoss: 0.5809334503544702 , Test Accuracy: 0.6890000104904175
+Epoch 6, Train Accuracy: 0.7542222142219543 , TrainLoss: 0.5545347877078586 , Test Accuracy: 0.6483333110809326
+Epoch 7, Train Accuracy: 0.7624444365501404 , TrainLoss: 0.5324137479464213 , Test Accuracy: 0.6196666359901428
+Checkpoint saved
+Epoch 8, Train Accuracy: 0.7744444608688354 , TrainLoss: 0.5172938555081685 , Test Accuracy: 0.7113333344459534
+Epoch 9, Train Accuracy: 0.7836666703224182 , TrainLoss: 0.48978615797890557 , Test Accuracy: 0.7096666693687439
+Epoch 10, Train Accuracy: 0.7922222018241882 , TrainLoss: 0.47687187512715656 , Test Accuracy: 0.6660000085830688
+Checkpoint saved
+Epoch 11, Train Accuracy: 0.8045555353164673 , TrainLoss: 0.45968666558795507 , Test Accuracy: 0.7239999771118164
+Checkpoint saved
+Epoch 12, Train Accuracy: 0.8116666674613953 , TrainLoss: 0.44242214812172787 , Test Accuracy: 0.7416666746139526
+Epoch 13, Train Accuracy: 0.8171111345291138 , TrainLoss: 0.4280574623743693 , Test Accuracy: 0.7223333120346069
+Epoch 14, Train Accuracy: 0.828000009059906 , TrainLoss: 0.40478869416978625 , Test Accuracy: 0.7316666841506958
+Checkpoint saved
+Epoch 15, Train Accuracy: 0.8315555453300476 , TrainLoss: 0.397681756456693 , Test Accuracy: 0.7440000176429749
+Epoch 16, Train Accuracy: 0.8416666984558105 , TrainLoss: 0.381521575583352 , Test Accuracy: 0.7229999899864197
+Epoch 17, Train Accuracy: 0.8497777581214905 , TrainLoss: 0.3659710875087314 , Test Accuracy: 0.7269999980926514
+Epoch 18, Train Accuracy: 0.8527777791023254 , TrainLoss: 0.3493670513232549 , Test Accuracy: 0.7176666855812073
+Epoch 19, Train Accuracy: 0.862333357334137 , TrainLoss: 0.33617290502124364 , Test Accuracy: 0.7203333377838135
+Checkpoint saved
+Epoch 20, Train Accuracy: 0.8720000386238098 , TrainLoss: 0.3119677145613564 , Test Accuracy: 0.7513332962989807
+Epoch 21, Train Accuracy: 0.8722222447395325 , TrainLoss: 0.3115354914135403 , Test Accuracy: 0.7269999980926514
+Epoch 22, Train Accuracy: 0.8817777633666992 , TrainLoss: 0.2963669812414381 , Test Accuracy: 0.7463333010673523
+Epoch 23, Train Accuracy: 0.8901111483573914 , TrainLoss: 0.277660469505522 , Test Accuracy: 0.7136666774749756
+Epoch 24, Train Accuracy: 0.8982222080230713 , TrainLoss: 0.2660481321414312 , Test Accuracy: 0.7396666407585144
