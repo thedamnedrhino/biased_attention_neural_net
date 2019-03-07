@@ -7,21 +7,20 @@ import numpy as np
 
 class Dataset(torch.utils.data.Dataset):
   'Characterizes a dataset for PyTorch'
-  def __init__(self, images, set='train', transformer=None):
+  def __init__(self, images, set='train', transformers=None):
         'Initialization'
         self.images = images
-        self.transformer = None if transformer is False else self.create_transformer(set)
+        self.transformer = self.create_transformer(set, transformers=transformers)
 
-  def create_transformer(self, set):
-    ts = [
-      transforms.ToPILImage(),
-      # transforms.RandomHorizontalFlip(),
-      transforms.RandomHorizontalFlip(p=0.5),
-      transforms.RandomRotation(20),
-      transforms.ToTensor(),
-      # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-      #                            std=[0.229, 0.224, 0.225])
-    ]
+  def create_transformer(self, set, transformers=None):
+    if transformers is None:
+      transformers = [      
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(20)
+      ]
+
+    ts = [transforms.ToPILImage()] + transformers + [transforms.ToTensor()]
+
     return transforms.Compose(ts)
 
   def __len__(self):
@@ -51,11 +50,20 @@ def augment(d, augment_label):
 
   return d + [data.Image(i, augment_label) for i in s]
 
-def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment=False, augment_label=2):
+TRANSFORMERS = {
+'hor': transforms.RandomHorizontalFlip(p=0.5),
+'rot': transforms.RandomRotation(15),
+'gray': transforms.RandomGrayscale(p=0.1),
+'affine': transforms.RandomAffine(15),
+'rrcrop': transforms.RandomResizedCrop((32, 32))
+}
+
+def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment=False, augment_label=2, transformers=None):
   d = data.get_data(datadir, set)
   if augment:
     augmented = augment(d, augment_label)
-  dset = Dataset(d, set)
+  transformers = [TRANSFORMERS[i] for i in transformers] if transformers is not None else None
+  dset = Dataset(d, set, transformers=transformers)
   dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=batch_size, shuffle=True)
   return dloader
 
