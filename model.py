@@ -457,6 +457,6 @@ if __name__ == "__main__":
 	if validate_only:
 		validate()
 	if test_only:
-		test_loader = dataset.create_testloader()
+		test_loader = dataset.create_testloader(datadir)
 		test(model, test_loader)
 
