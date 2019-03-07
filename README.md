@@ -44,7 +44,7 @@ python model.py -e 20 -d './custom_dataset_folder' -m 'my_model.model'
 ```
 Validate with something like:
 ```
-python model.py -v -d'./custom_dataset_folder' -l 'my_model.model'
+python model.py -v -d './custom_dataset_folder' -l 'my_model.model'
 ```
 
 You can generate the testlabels by adding the `-t` option to the previous command or replacing `-v` if you don't want to recheck
