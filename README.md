@@ -1,4 +1,4 @@
-# first_image_classifier
+# Cat-Dog-Frog Classifier
 This is a project to classify some 32*32 images with three categories: dogs, cats and frogs. They can be found in the 'data.zip' archive.
 
 ## Installing
