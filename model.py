@@ -50,6 +50,31 @@ class Unit(nn.Module):
 
 		return output
 
+class ExtendedNet(nn.Module):
+	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
+		super(ExtendedNet, self).__init__()
+		self.num_classes = num_classes
+		self.hidden_channels = hidden_channels
+		self.height = height
+		self.width = width
+		self.nested_model = nested_model
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=num_classes**2)
+		self.fc2 = nn.Linear(in_features=num_classes**2,out_features=num_classes)
+	
+	def num_features(self):
+		return self.nested_model.num_features() + self.num_classes
+	
+	def forward(self, input):
+		nested_output = self.nested_model(input)
+		nested_features = self.nested_model.features1d
+		assert len(nested_features.size()) == 2
+		assert len(nested_output.size()) == 2
+		extended_features = torch.cat((nested_output, nested_features), 1)
+		output = self.fc1(extended_features)
+		output = self.fc2(output)
+		return output
+	
+		
 class SimpleNet(nn.Module):
 	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
 		super(SimpleNet,self).__init__()
@@ -113,7 +138,9 @@ class SimpleNet(nn.Module):
 
 	def forward(self, input):
 		output = self.net(input)
+		self.features = output
 		output = output.view(-1, self.num_features())
+		self.features1d = output
 		# output = output.view(-1,128)
 		output = self.fc(output)
 		return output
@@ -398,6 +425,20 @@ class data:
 		images = [data.Image(d[i], 10) for i in range(len(d))]
 		return images
 
+def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None):
+	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
+	if load_saved and not extended_checkpoint:
+		load_checkpoint(model, checkpoint_name)
+	if extended:
+		for p in model.parameters():
+			p.requires_grad = False
+		
+		model = ExtendedNet(model)	
+		if extended_checkpoint:
+			load_checkpoint(model, checkpoint_name)
+	return model
+				
+				
 if __name__ == "__main__":
 	optparser = optparse.OptionParser()
 	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
@@ -411,6 +452,8 @@ if __name__ == "__main__":
 	optparser.add_option("-l", "--load-checkpoint", dest="checkpointname", default=None, help="input the checkpoint for the model if you want to use one as base")
 	optparser.add_option("--test", dest="test", action="store_true", default=False, help="whether to augment the data")
 	optparser.add_option("-r", "--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_option("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
+	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
 
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
@@ -424,6 +467,8 @@ if __name__ == "__main__":
 	validate_only = opts.validateonly
 	test_only = opts.test
 	MERGE_VALIDATION = opts.mergevalidation
+	extended = opts.extended
+	extended_checkpoint = opts.extendedcheckpoint
 
 	if transformers == '-':
 		transformers = []
@@ -455,15 +500,13 @@ if __name__ == "__main__":
 	cuda_avail = torch.cuda.is_available()
 
 	#Create model, optimizer and loss function
-	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
+	model = create_model(extended, load_saved, checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint)
 
 	if cuda_avail:
 		model.cuda()
 
 	optimizer = Adam(model.parameters(), lr=0.001,weight_decay=0.0001)
 	loss_fn = nn.CrossEntropyLoss()
-	if load_saved:
-		load_checkpoint(model, checkpoint_name)
 
 	if not validate_only and not test_only:
 		train(epochs, opts.modelname)
