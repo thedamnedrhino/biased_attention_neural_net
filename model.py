@@ -5,6 +5,7 @@ from torchvision.transforms import transforms
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.autograd import Variable
+from torch.nn.functional import sigmoid
 import numpy as np
 
 import optparse
@@ -69,7 +70,8 @@ class ExtendedNet(nn.Module):
 		nested_features = self.nested_model.features1d
 		assert len(nested_features.size()) == 2
 		assert len(nested_output.size()) == 2
-		extended_features = torch.cat((nested_output, nested_features), 1)
+		nested_probs = sigmoid(nested_output)
+		extended_features = torch.cat((nested_probs, nested_features), 1)
 		output = self.fc1(extended_features)
 		output = self.fc2(output)
 		return output
