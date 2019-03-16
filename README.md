@@ -1,4 +1,4 @@
-# first_image_classifier
+# Cat-Dog-Frog Classifier
 This is a project to classify some 32*32 images with three categories: dogs, cats and frogs. They can be found in the 'data.zip' archive.
 
 ## Installing
@@ -26,7 +26,7 @@ First extract the data. It would be easiest to put the contents in a folder call
 The code works both with and without a gpu. The main file is `model.py` and in fact it is self sufficient.
 The code used to be distributed in the three files `model.py`, `dataset.py` and `data.py`, but the assignment requirements
 stated that I had to have everything in one file, so I basically copied the other two files into `model.py`. The contents of the 
-two other files are put in the two classes called `dataset` and `data` in `model.py`.  
+two other files are put in the two classes called `dataset` and `data` in `model.py`. Those files are kept since they have useful main functions.    
 To run, do `python model.py -h` first
 to see the options you would have available. You can control:
 - the directory of the dataset (defaults to './datasets')
@@ -44,7 +44,7 @@ python model.py -e 20 -d './custom_dataset_folder' -m 'my_model.model'
 ```
 Validate with something like:
 ```
-python model.py -v -d'./custom_dataset_folder' -l 'my_model.model'
+python model.py -v -d './custom_dataset_folder' -l 'my_model.model'
 ```
 
 You can generate the testlabels by adding the `-t` option to the previous command or replacing `-v` if you don't want to recheck
