@@ -96,6 +96,8 @@ class ExtendedNet(nn.Module):
 			output = self.fc1(normalized_features)
 
 		output = self.nonlinear(output)
+		nested_output = self.nonlinear(nested_output)
+
 		output = self.fc2(torch.cat((nested_output, output), 1))
 		return output
 
