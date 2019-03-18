@@ -52,15 +52,19 @@ class Unit(nn.Module):
 		return output
 
 class ExtendedNet(nn.Module):
-	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32, nonlinear='sigmoid'):
+	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32, nonlinear='sigmoid', fc_include_class_prob=False):
 		super(ExtendedNet, self).__init__()
 		self.num_classes = num_classes
 		self.hidden_channels = hidden_channels
 		self.height = height
 		self.width = width
 		self.nested_model = nested_model
-		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=num_classes**2)
-		self.fc2 = nn.Linear(in_features=num_classes**2 + num_classes ,out_features=num_classes)
+		# self.fc1 = nn.Linear(in_features=self.num_features() + int(fc_include_class_prob), out_features=num_classes**2)
+		# self.fcs = [nn.Linear(in_features=self.num_features() + int(self.fc_include_class_prob), out_features=num_classes)
+		# for c in range(num_classes)]
+		self.fc_include_class_prob = fc_include_class_prob
+		self.fc1 = nn.Linear(in_features=(self.num_features() + int(fc_include_class_prob))*num_classes), out_features=num_classes)
+		self.fc2 = nn.Linear(in_features=num_classes + num_classes ,out_features=num_classes) # inputs are from previous layer and last layer in the base net
 		self.sigmoid = nn.Sigmoid()
 		self.relu = nn.ReLU()
 		nonlinearmap = {'sigmoid': self.sigmoid, 'relu': self.relu, 'none': lambda x: x}
@@ -73,11 +77,24 @@ class ExtendedNet(nn.Module):
 	def forward(self, input):
 		nested_output = self.nested_model(input)
 		nested_features = self.nested_model.features1d
+
 		assert len(nested_features.size()) == 2
 		assert len(nested_output.size()) == 2
+
 		nested_probs = self.sigmoid(nested_output)
-		extended_features = torch.cat((nested_output, nested_features), 1)
-		output = self.fc1(extended_features)
+		normalized_features = nested_features.unsqueeze(1).transpose(-1, -2).matmul(nested_output.unsqueeze(1))
+
+		assert normalized_features.size(1) == nested_features.size(1), "{} != {}".format(normalized_features.size(), nested_features.size())
+		assert normalized_features.size(2) == nested_output.size(1), "{} != {}".format(normalized_features.size(), nested_features.size())
+
+		# extended_features = torch.cat((nested_output, nested_features), 1)
+		# output = self.fc1(extended_features)
+
+		normalized_features = normalized_features.view(-1, normalized_features.size(-2), normalized_features.size(-1))
+		if self.fc_include_class_prob:
+			normalized_features = torch.cat((normalized_features, output), 1)
+			output = self.fc1(normalized_features)
+
 		output = self.nonlinear(output)
 		output = self.fc2(torch.cat((nested_output, output), 1))
 		return output
