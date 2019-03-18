@@ -63,7 +63,7 @@ class ExtendedNet(nn.Module):
 		# self.fcs = [nn.Linear(in_features=self.num_features() + int(self.fc_include_class_prob), out_features=num_classes)
 		# for c in range(num_classes)]
 		self.fc_include_class_prob = fc_include_class_prob
-		self.fc1 = nn.Linear(in_features=(self.num_features() + int(fc_include_class_prob))*num_classes), out_features=num_classes)
+		self.fc1 = nn.Linear(in_features=(self.num_features() + int(fc_include_class_prob))*num_classes, out_features=num_classes)
 		self.fc2 = nn.Linear(in_features=num_classes + num_classes ,out_features=num_classes) # inputs are from previous layer and last layer in the base net
 		self.sigmoid = nn.Sigmoid()
 		self.relu = nn.ReLU()
