@@ -11,11 +11,12 @@ import numpy as np
 import optparse
 import pickle
 
+import dataset
 
 """
-This is a convulational network with 4 convulational layers and two pool layers after every two conv layers. 
+This is a convulational network with 4 convulational layers and two pool layers after every two conv layers.
 Each convulational layer has 12 filters. It is inspired by https://heartbeat.fritz.ai/basics-of-image-classification-with-pytorch-2f8973c51864
-For the DATA IMBALANCE PROBLEM, I augmented the data to include transformed versions of the the images from the third category, such that there would 
+For the DATA IMBALANCE PROBLEM, I augmented the data to include transformed versions of the the images from the third category, such that there would
 be an equal number of instances of each class.
 Solving the data imbalance got the accuracy on the validation set from 0.75 to 0.80. The output file can be found as 'output.txt'.
 The full runnable python code along with a readme can be found at  https://github.com/thedamnedrhino/first_image_classifier.
@@ -25,14 +26,14 @@ ADDITIONAL NOTES AND OBSERVATIONS:
 this changed and the accuracy kept increasing for longer. This was to be expected.
 
 - The network was trained only on the train data for generating the test labels. I did also merge the validation set into the training set to see what difference
-it would make on the test labels. Interestingly even though training on the merged trained-validation dataset gets the accuracy on the 
+it would make on the test labels. Interestingly even though training on the merged trained-validation dataset gets the accuracy on the
 training set and the validation set from ~0.80 BOTH, to 0.66 and 0.88 on the sets respectively, the labels generated for the test data
 have minimal differences: less than 10 cases. I checked those cases manually and saw that the number that the network trained only on the train data
 got right, was equal to the number that the network trained with the merged train and validation data got right, and they should have similar performances
 on the test set.
 """
 
-KERNEL_SIZE=5	
+KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
@@ -61,10 +62,10 @@ class ExtendedNet(nn.Module):
 		self.nested_model = nested_model
 		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=num_classes**2)
 		self.fc2 = nn.Linear(in_features=num_classes**2,out_features=num_classes)
-	
+
 	def num_features(self):
 		return self.nested_model.num_features() + self.num_classes
-	
+
 	def forward(self, input):
 		nested_output = self.nested_model(input)
 		nested_features = self.nested_model.features1d
@@ -75,8 +76,8 @@ class ExtendedNet(nn.Module):
 		output = self.fc1(extended_features)
 		output = self.fc2(output)
 		return output
-	
-		
+
+
 class SimpleNet(nn.Module):
 	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
 		super(SimpleNet,self).__init__()
@@ -120,7 +121,7 @@ class SimpleNet(nn.Module):
 		# self.unit14 = Unit(in_channels=128, out_channels=128)
 
 		# self.avgpool = nn.AvgPool2d(kernel_size=4)
-		
+
 		#Add all the units into the Sequential layer in exact order
 		# self.net = nn.Sequential(self.unit1, self.unit2, self.unit3, self.pool1, self.unit4, self.unit5, self.unit6
 								 # ,self.unit7, self.pool2, self.unit8, self.unit9, self.unit10, self.unit11, self.pool3,
@@ -184,7 +185,7 @@ def validate():
 	validate_acc = 0.0
 	validate_loss = 0.0
 	for i, (images, labels) in enumerate(validate_loader):
-	  
+
 		if cuda_avail:
 			images = Variable(images.cuda())
 			labels = Variable(labels.cuda())
@@ -211,7 +212,7 @@ def validate():
 			_,prediction = torch.max(outputs.data, 1)
 			# prediction = prediction.cpu().numpy()
 			validate_acc += torch.sum(prediction == labels.data).float()
-		
+
 
 
 	#Compute the average acc and loss over all 10000 validate images
@@ -295,138 +296,6 @@ def test(model, test_loader):
 		with open(datadir+'/testlabel.pickle', 'rb') as f:
 			print(pickle.load(f))
 
-
-
-class dataset:
-
-	class Dataset(torch.utils.data.Dataset):
-		'Characterizes a dataset for PyTorch'
-		def __init__(self, images, set='train', transformers=None):
-			'Initialization'
-			self.images = images
-			self.transformer = self.create_transformer(set, transformers=transformers)
-
-		def create_transformer(self, set, transformers=None):
-			if transformers is None:
-				transformers = [      
-					transforms.RandomHorizontalFlip(p=0.5),
-					transforms.RandomRotation(20)
-				]
-
-			ts = [transforms.ToPILImage()] + transformers + [transforms.ToTensor()]
-
-			return transforms.Compose(ts)
-
-		def __len__(self):
-			return len(self.images)
-
-		def __getitem__(self, index):
-			image = self.images[index]
-			X = self.transformer(np.array(image.shaped()))
-			y = image.label
-
-			return X, y
-
-	def augment(d, augment_label):
-		print ("augmenting++++++++++++++")
-		s = [i.shaped() for i in data if i.label == augment_label]
-		ts = [
-		transforms.ColorJitter(brightness=2),
-		transforms.ColorJitter(contrast=2),
-		transforms.ColorJitter(saturation=2),
-		]
-		transformer = transformer.Compose([
-		  transformers.ToPILImage(),
-		  transformers.RandomChoice(ts)
-		])
-		for idx, i in enumerate(s):
-		  s[idx] = transformer(i)
-
-		return d + [data.Image(i, augment_label) for i in s]
-
-	TRANSFORMERS = {
-	'hor': transforms.RandomHorizontalFlip(p=0.5),
-	'rot': transforms.RandomRotation(15),
-	'gray': transforms.RandomGrayscale(p=0.1),
-	'affine': transforms.RandomAffine(15),
-	'rrcrop': transforms.RandomResizedCrop((32, 32))
-	}
-
-	def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment=False, augment_label=2, transformers=None):
-		d = data.get_data(datadir, set)
-		if augment:
-		  augmented = augment(d, augment_label)
-		transformers = [TRANSFORMERS[i] for i in transformers] if transformers is not None else None
-		dset = dataset.Dataset(d, set, transformers=transformers)
-		dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=batch_size, shuffle=True)
-		return dloader
-	def create_testloader(datadir='./datasets'):
-		d = data.get_testdata(datadir)
-		dset = dataset.Dataset(d, 'test', transformers=[])
-		dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=len(dset), shuffle=False)
-		return dloader
-
-
-class data:
-
-	IMAGES = None
-	LABELS = None
-
-	class Image:
-		def __init__(self, pixels, label, channels=3, rows=32, cols=32):
-			self.pixels = pixels
-			self.label = label
-			self.shaped_img = None
-			self.channels = channels
-			self.rows = rows
-			self.cols = cols
-		
-		def show(self, p=True):
-			plt.imshow(self.shaped())
-			plt.show()
-			if p:
-				print("LABEL: ++ {} ++\n".format(self.label))
-			return plt
-			
-		def shape(self, merged=True):
-			img = self.pixels
-			assert len(img) == 1024 * 3
-			channels = [img[i*1024:(i+1)*1024] for i in range(3)]
-			channels = [ [channel[row*32:(row+1)*32] for row in range(32)] for channel in channels ]
-			assert len(channels) == 3
-			assert len(channels[0]) == 32
-			assert len(channels[2][2]) == 32
-			if merged:
-				channels = [[ [channels[0][i][j], channels[1][i][j], channels[2][i][j]] for j in range(32)] for i in range(32)]
-			return channels
-					
-		   
-		def shaped(self):
-			if self.shaped_img is None:
-				self.shaped_img = self.shape()
-			return self.shaped_img
-		
-	def get_data(datadir='./datasets', dataset='train'):
-		"""
-		param dataset: 'train', 'valid'
-		"""
-		filename = datadir + '/' + dataset + 'set.pickle'
-		with open(filename, 'rb') as fo:
-			dict = pickle.load(fo, encoding='bytes')
-			d = dict['data']
-			labels = dict['label']
-		images = [data.Image(d[i], labels[i]) for i in range(len(d))]
-		data.IMAGES = images if data.IMAGES is None else data.IMAGES
-		return images
-
-	def get_testdata(datadir='./datasets'):
-		filename = datadir + '/' + 'test' + 'set.pickle'
-		with open(filename, 'rb') as fo:
-			dict = pickle.load(fo, encoding='bytes')
-			d = dict['data']
-		images = [data.Image(d[i], 10) for i in range(len(d))]
-		return images
-
 def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
@@ -434,13 +303,12 @@ def create_model(extended=False, load_saved=False, checkpoint_name=None, extende
 	if extended:
 		for p in model.parameters():
 			p.requires_grad = False
-		
-		model = ExtendedNet(model)	
+
+		model = ExtendedNet(model)
 		if extended_checkpoint:
 			load_checkpoint(model, checkpoint_name)
 	return model
-				
-				
+
 if __name__ == "__main__":
 	optparser = optparse.OptionParser()
 	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
@@ -496,7 +364,7 @@ if __name__ == "__main__":
 	batch_size = 32
 	train_loader = dataset.create_dataloader(datadir, 'train', batch_size, transformers=transformers)
 	validate_loader = dataset.create_dataloader(datadir, 'valid', batch_size, transformers=[])
-	
+
 
 	#Check if gpu support is available
 	cuda_avail = torch.cuda.is_available()
