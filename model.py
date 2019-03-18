@@ -299,13 +299,16 @@ def test(model, test_loader):
 			print(pickle.load(f))
 
 
-def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None):
+def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
 		load_checkpoint(model, checkpoint_name)
 	if extended:
 		for p in model.parameters():
 			p.requires_grad = False
+		if unfreeze_basefc:
+			for p in model.fc.parameters():
+				p.requires_grad = True
 
 		model = ExtendedNet(model)
 		if extended_checkpoint:
@@ -327,6 +330,7 @@ if __name__ == "__main__":
 	optparser.add_option("-r", "--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
 	optparser.add_option("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
 	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
+	optparser.add_option("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
 
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
@@ -342,6 +346,7 @@ if __name__ == "__main__":
 	MERGE_VALIDATION = opts.mergevalidation
 	extended = opts.extended
 	extended_checkpoint = opts.extendedcheckpoint
+	unfreeze_basefc = opts.unfreezefc
 
 	if transformers == '-':
 		transformers = []
@@ -373,7 +378,7 @@ if __name__ == "__main__":
 	cuda_avail = torch.cuda.is_available()
 
 	#Create model, optimizer and loss function
-	model = create_model(extended, load_saved, checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint)
+	model = create_model(extended, load_saved, checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc)
 
 	if cuda_avail:
 		model.cuda()
