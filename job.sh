@@ -6,7 +6,6 @@
 #SBATCH --output=%x.out
 # %x is the job name
 
-JOB_NAME=${SBATCH_JOB_NAME}
 source startup.sh
-python model.py -e ${NUM_EPOCHS:-50} -d '../datasets' -a -m ${JOB_NAME}.model  -l ${MODEL_NAME:-'outputs/regular.model'} {RUN_FLAGS:-''}
+python model.py -e ${NUM_EPOCHS:-50} -d '../datasets' -a -m ${SLURM_JOB_NAME}.model  -l ${MODEL_NAME:-'outputs/regular.model'} {RUN_FLAGS:-''}
 

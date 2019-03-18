@@ -1,0 +1,6 @@
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) openmpi/2.1.1
+
+slurmstepd: error: Exceeded job memory limit
+slurmstepd: error: *** JOB 18342649 ON cdr305 CANCELLED AT 2019-03-18T11:42:45 ***
