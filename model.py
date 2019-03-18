@@ -62,6 +62,7 @@ class ExtendedNet(nn.Module):
 		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=num_classes**2)
 		self.fc2 = nn.Linear(in_features=num_classes**2 + num_classes ,out_features=num_classes)
 		self.sigmoid = nn.Sigmoid()
+		self.relu = nn.ReLU()
 
 	def num_features(self):
 		return self.nested_model.num_features() + self.num_classes
@@ -74,6 +75,7 @@ class ExtendedNet(nn.Module):
 		nested_probs = self.sigmoid(nested_output)
 		extended_features = torch.cat((nested_output, nested_features), 1)
 		output = self.fc1(extended_features)
+		output = self.relu(output)
 		output = self.fc2(torch.cat((nested_output, output), 1))
 		return output
 
@@ -357,7 +359,7 @@ if __name__ == "__main__":
 
 	#Define transformations for the validate set
 	validate_transformations = transforms.Compose([
-	   transforms.ToTensor(),
+		transforms.ToTensor(),
 		transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
 
 	])
