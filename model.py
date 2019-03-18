@@ -5,7 +5,6 @@ from torchvision.transforms import transforms
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.autograd import Variable
-from torch.nn.functional import sigmoid
 import numpy as np
 
 import optparse
@@ -13,9 +12,9 @@ import pickle
 
 
 """
-This is a convulational network with 4 convulational layers and two pool layers after every two conv layers. 
+This is a convulational network with 4 convulational layers and two pool layers after every two conv layers.
 Each convulational layer has 12 filters. It is inspired by https://heartbeat.fritz.ai/basics-of-image-classification-with-pytorch-2f8973c51864
-For the DATA IMBALANCE PROBLEM, I augmented the data to include transformed versions of the the images from the third category, such that there would 
+For the DATA IMBALANCE PROBLEM, I augmented the data to include transformed versions of the the images from the third category, such that there would
 be an equal number of instances of each class.
 Solving the data imbalance got the accuracy on the validation set from 0.75 to 0.80. The output file can be found as 'output.txt'.
 The full runnable python code along with a readme can be found at  https://github.com/thedamnedrhino/first_image_classifier.
@@ -25,14 +24,14 @@ ADDITIONAL NOTES AND OBSERVATIONS:
 this changed and the accuracy kept increasing for longer. This was to be expected.
 
 - The network was trained only on the train data for generating the test labels. I did also merge the validation set into the training set to see what difference
-it would make on the test labels. Interestingly even though training on the merged trained-validation dataset gets the accuracy on the 
+it would make on the test labels. Interestingly even though training on the merged trained-validation dataset gets the accuracy on the
 training set and the validation set from ~0.80 BOTH, to 0.66 and 0.88 on the sets respectively, the labels generated for the test data
 have minimal differences: less than 10 cases. I checked those cases manually and saw that the number that the network trained only on the train data
 got right, was equal to the number that the network trained with the merged train and validation data got right, and they should have similar performances
 on the test set.
 """
 
-KERNEL_SIZE=5	
+KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
@@ -60,23 +59,24 @@ class ExtendedNet(nn.Module):
 		self.width = width
 		self.nested_model = nested_model
 		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=num_classes**2)
-		self.fc2 = nn.Linear(in_features=num_classes**2,out_features=num_classes)
-	
+		self.fc2 = nn.Linear(in_features=num_classes**2 + num_classes ,out_features=num_classes)
+		self.sigmoid = nn.Sigmoid()
+
 	def num_features(self):
 		return self.nested_model.num_features() + self.num_classes
-	
+
 	def forward(self, input):
 		nested_output = self.nested_model(input)
 		nested_features = self.nested_model.features1d
 		assert len(nested_features.size()) == 2
 		assert len(nested_output.size()) == 2
-		nested_probs = sigmoid(nested_output)
-		extended_features = torch.cat((nested_probs, nested_features), 1)
+		nested_probs = self.sigmoid(nested_output)
+		extended_features = torch.cat((nested_output, nested_features), 1)
 		output = self.fc1(extended_features)
-		output = self.fc2(output)
+		output = self.fc2(torch.cat((nested_output, output), 1))
 		return output
-	
-		
+
+
 class SimpleNet(nn.Module):
 	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
 		super(SimpleNet,self).__init__()
@@ -120,7 +120,7 @@ class SimpleNet(nn.Module):
 		# self.unit14 = Unit(in_channels=128, out_channels=128)
 
 		# self.avgpool = nn.AvgPool2d(kernel_size=4)
-		
+
 		#Add all the units into the Sequential layer in exact order
 		# self.net = nn.Sequential(self.unit1, self.unit2, self.unit3, self.pool1, self.unit4, self.unit5, self.unit6
 								 # ,self.unit7, self.pool2, self.unit8, self.unit9, self.unit10, self.unit11, self.pool3,
@@ -184,7 +184,7 @@ def validate():
 	validate_acc = 0.0
 	validate_loss = 0.0
 	for i, (images, labels) in enumerate(validate_loader):
-	  
+
 		if cuda_avail:
 			images = Variable(images.cuda())
 			labels = Variable(labels.cuda())
@@ -211,7 +211,7 @@ def validate():
 			_,prediction = torch.max(outputs.data, 1)
 			# prediction = prediction.cpu().numpy()
 			validate_acc += torch.sum(prediction == labels.data).float()
-		
+
 
 
 	#Compute the average acc and loss over all 10000 validate images
@@ -308,7 +308,7 @@ class dataset:
 
 		def create_transformer(self, set, transformers=None):
 			if transformers is None:
-				transformers = [      
+				transformers = [
 					transforms.RandomHorizontalFlip(p=0.5),
 					transforms.RandomRotation(20)
 				]
@@ -380,14 +380,14 @@ class data:
 			self.channels = channels
 			self.rows = rows
 			self.cols = cols
-		
+
 		def show(self, p=True):
 			plt.imshow(self.shaped())
 			plt.show()
 			if p:
 				print("LABEL: ++ {} ++\n".format(self.label))
 			return plt
-			
+
 		def shape(self, merged=True):
 			img = self.pixels
 			assert len(img) == 1024 * 3
@@ -399,13 +399,13 @@ class data:
 			if merged:
 				channels = [[ [channels[0][i][j], channels[1][i][j], channels[2][i][j]] for j in range(32)] for i in range(32)]
 			return channels
-					
-		   
+
+
 		def shaped(self):
 			if self.shaped_img is None:
 				self.shaped_img = self.shape()
 			return self.shaped_img
-		
+
 	def get_data(datadir='./datasets', dataset='train'):
 		"""
 		param dataset: 'train', 'valid'
@@ -434,13 +434,13 @@ def create_model(extended=False, load_saved=False, checkpoint_name=None, extende
 	if extended:
 		for p in model.parameters():
 			p.requires_grad = False
-		
-		model = ExtendedNet(model)	
+
+		model = ExtendedNet(model)
 		if extended_checkpoint:
 			load_checkpoint(model, checkpoint_name)
 	return model
-				
-				
+
+
 if __name__ == "__main__":
 	optparser = optparse.OptionParser()
 	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
@@ -496,7 +496,7 @@ if __name__ == "__main__":
 	batch_size = 32
 	train_loader = dataset.create_dataloader(datadir, 'train', batch_size, transformers=transformers)
 	validate_loader = dataset.create_dataloader(datadir, 'valid', batch_size, transformers=[])
-	
+
 
 	#Check if gpu support is available
 	cuda_avail = torch.cuda.is_available()
