@@ -52,7 +52,7 @@ class Unit(nn.Module):
 		return output
 
 class ExtendedNet(nn.Module):
-	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
+	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32, nonlinear='sigmoid'):
 		super(ExtendedNet, self).__init__()
 		self.num_classes = num_classes
 		self.hidden_channels = hidden_channels
@@ -63,6 +63,9 @@ class ExtendedNet(nn.Module):
 		self.fc2 = nn.Linear(in_features=num_classes**2 + num_classes ,out_features=num_classes)
 		self.sigmoid = nn.Sigmoid()
 		self.relu = nn.ReLU()
+		nonlinearmap = {'sigmoid': self.sigmoid, 'relu': self.relu, 'none': lambda x: x}
+		assert nonlinear in nonlinearmap
+		self.nonlinear = nonlinearmap[nonlinear]
 
 	def num_features(self):
 		return self.nested_model.num_features() + self.num_classes
@@ -75,7 +78,7 @@ class ExtendedNet(nn.Module):
 		nested_probs = self.sigmoid(nested_output)
 		extended_features = torch.cat((nested_output, nested_features), 1)
 		output = self.fc1(extended_features)
-		output = self.relu(output)
+		output = self.nonlinear(output)
 		output = self.fc2(torch.cat((nested_output, output), 1))
 		return output
 
@@ -299,7 +302,7 @@ def test(model, test_loader):
 			print(pickle.load(f))
 
 
-def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False):
+def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False, nonlinear='sigmoid'):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
 		load_checkpoint(model, checkpoint_name)
@@ -310,7 +313,7 @@ def create_model(extended=False, load_saved=False, checkpoint_name=None, extende
 			for p in model.fc.parameters():
 				p.requires_grad = True
 
-		model = ExtendedNet(model)
+		model = ExtendedNet(model, nonlinear=nonlinear)
 		if extended_checkpoint:
 			load_checkpoint(model, checkpoint_name)
 	return model
@@ -331,6 +334,7 @@ if __name__ == "__main__":
 	optparser.add_option("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
 	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
 	optparser.add_option("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
+	optparser.add_option("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
 
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
@@ -347,6 +351,7 @@ if __name__ == "__main__":
 	extended = opts.extended
 	extended_checkpoint = opts.extendedcheckpoint
 	unfreeze_basefc = opts.unfreezefc
+	nonlinear = opts.nonlinear
 
 	if transformers == '-':
 		transformers = []
@@ -378,7 +383,9 @@ if __name__ == "__main__":
 	cuda_avail = torch.cuda.is_available()
 
 	#Create model, optimizer and loss function
-	model = create_model(extended, load_saved, checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc)
+	model = create_model(extended, load_saved,
+			checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc,
+			nonlinear=nonlinear)
 
 	if cuda_avail:
 		model.cuda()
