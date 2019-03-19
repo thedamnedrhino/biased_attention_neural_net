@@ -11,6 +11,7 @@ import optparse
 import pickle
 
 import dataset
+import nets
 
 """
 This is a convulational network with 4 convulational layers and two pool layers after every two conv layers.
@@ -36,6 +37,10 @@ KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
+NETWORK_MAP = {
+		'regular': nets.RegularExtendedNet,
+		'fc_normalized': nets.FCNormalizedNet
+		}
 
 class Unit(nn.Module):
 	def __init__(self,in_channels,out_channels):
@@ -50,58 +55,6 @@ class Unit(nn.Module):
 		output = self.relu(output)
 
 		return output
-
-class ExtendedNet(nn.Module):
-	def __init__(self, nested_model, num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32, nonlinear='sigmoid', fc_include_class_prob=False):
-		super(ExtendedNet, self).__init__()
-		self.num_classes = num_classes
-		self.hidden_channels = hidden_channels
-		self.height = height
-		self.width = width
-		self.nested_model = nested_model
-		# self.fc1 = nn.Linear(in_features=self.num_features() + int(fc_include_class_prob), out_features=num_classes**2)
-		# self.fcs = [nn.Linear(in_features=self.num_features() + int(self.fc_include_class_prob), out_features=num_classes)
-		# for c in range(num_classes)]
-		self.fc_include_class_prob = fc_include_class_prob
-		self.fc1 = nn.Linear(in_features=(self.num_features() + int(fc_include_class_prob))*num_classes, out_features=num_classes)
-		self.fc2 = nn.Linear(in_features=num_classes + num_classes ,out_features=num_classes) # inputs are from previous layer and last layer in the base net
-		self.sigmoid = nn.Sigmoid()
-		self.relu = nn.ReLU()
-		nonlinearmap = {'sigmoid': self.sigmoid, 'relu': self.relu, 'none': lambda x: x}
-		assert nonlinear in nonlinearmap
-		self.nonlinear = nonlinearmap[nonlinear]
-
-	def num_features(self):
-		return self.nested_model.num_features() + self.num_classes
-
-	def forward(self, input):
-		nested_output = self.nested_model(input)
-		nested_features = self.nested_model.features1d
-
-		assert len(nested_features.size()) == 2
-		assert len(nested_output.size()) == 2
-
-		nested_probs = self.sigmoid(nested_output)
-		normalized_features = nested_features.unsqueeze(1).transpose(-1, -2).matmul(nested_output.unsqueeze(1))
-
-		assert normalized_features.size(1) == nested_features.size(1), "{} != {}".format(normalized_features.size(), nested_features.size())
-		assert normalized_features.size(2) == nested_output.size(1), "{} != {}".format(normalized_features.size(), nested_features.size())
-
-		# extended_features = torch.cat((nested_output, nested_features), 1)
-		# output = self.fc1(extended_features)
-
-		normalized_features = normalized_features.view(-1, normalized_features.size(-2), normalized_features.size(-1))
-		if self.fc_include_class_prob:
-			normalized_features = torch.cat((normalized_features, output), 1)
-
-		output = self.fc1(normalized_features)
-
-		output = self.nonlinear(output)
-		nested_output = self.nonlinear(nested_output)
-
-		output = self.fc2(torch.cat((nested_output, output), 1))
-		return output
-
 
 class SimpleNet(nn.Module):
 	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
@@ -322,10 +275,11 @@ def test(model, test_loader):
 			print(pickle.load(f))
 
 
-def create_model(extended=False, load_saved=False, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False, nonlinear='sigmoid'):
+def create_model(extended=False, load_saved=False, NetworkClass=None, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False, nonlinear='sigmoid'):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
 		load_checkpoint(model, checkpoint_name)
+
 	if extended:
 		for p in model.parameters():
 			p.requires_grad = False
@@ -333,9 +287,10 @@ def create_model(extended=False, load_saved=False, checkpoint_name=None, extende
 			for p in model.fc.parameters():
 				p.requires_grad = True
 
-		model = ExtendedNet(model, nonlinear=nonlinear)
+		model = NetworkClass(model, nonlinear=nonlinear)
 		if extended_checkpoint:
 			load_checkpoint(model, checkpoint_name)
+
 	return model
 
 if __name__ == "__main__":
@@ -355,7 +310,7 @@ if __name__ == "__main__":
 	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
 	optparser.add_option("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
 	optparser.add_option("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
-
+	optparser.add_option("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from [{}]".format(','.join(NETWORK_MAP.keys())))
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -372,6 +327,7 @@ if __name__ == "__main__":
 	extended_checkpoint = opts.extendedcheckpoint
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
+	network = NETWORK_MAP(opts.network) if extended else None
 
 	if transformers == '-':
 		transformers = []
@@ -403,7 +359,7 @@ if __name__ == "__main__":
 	cuda_avail = torch.cuda.is_available()
 
 	#Create model, optimizer and loss function
-	model = create_model(extended, load_saved,
+	model = create_model(extended, load_saved, network,
 			checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc,
 			nonlinear=nonlinear)
 
