@@ -93,7 +93,8 @@ class ExtendedNet(nn.Module):
 		normalized_features = normalized_features.view(-1, normalized_features.size(-2), normalized_features.size(-1))
 		if self.fc_include_class_prob:
 			normalized_features = torch.cat((normalized_features, output), 1)
-			output = self.fc1(normalized_features)
+
+		output = self.fc1(normalized_features)
 
 		output = self.nonlinear(output)
 		nested_output = self.nonlinear(nested_output)
