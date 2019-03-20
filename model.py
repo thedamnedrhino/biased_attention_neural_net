@@ -58,11 +58,16 @@ class Unit(nn.Module):
 
 class SimpleNet(nn.Module):
 	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
+		"""
+		in_channels: number of channels for the input image, e.g 3 for rgb
+		hidden_channels: number of convolutional channels (filters) in each conv layer
+		"""
 		super(SimpleNet,self).__init__()
 
 		self.hidden_channels = hidden_channels
 		self.height = height
 		self.width = width
+		self.num_classes = num_classes
 
 		channels = hidden_channels
 
@@ -327,7 +332,7 @@ if __name__ == "__main__":
 	extended_checkpoint = opts.extendedcheckpoint
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
-	network = NETWORK_MAP(opts.network) if extended else None
+	network = NETWORK_MAP[opts.network] if extended else None
 
 	if transformers == '-':
 		transformers = []
