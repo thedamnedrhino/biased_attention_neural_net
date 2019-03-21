@@ -87,3 +87,56 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		return output
 
+class FeatureNormalizedWithRawOutputNet(AbstractExtendedNet):
+
+	def _init_layers(self):
+		self.fc2 = self._final_fc_(self.num_features())
+
+	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
+
+		# discard the previous normalized features, we want to normalize the features independently in this net
+		normalized_features = self.normalize_features(nested_output, nested_probs, nested_features)
+
+		output = self.nonlinear(normalized_features)
+
+		output = self.fc2(output)
+
+		return output
+
+
+class FeatureNormalizedWithProbability_Raw_OutputNet(FeatureNormalizedWithRawOutputNet):
+
+	def get_normalization_coefficients(self, nested_output, nested_probs, nested_features):
+		return self.fc1(nested_output)
+
+class FeatureNormalizedWithProbability_Sigmoid_OutputNet(FeatureNormalizedWithRawOutputNet):
+
+	def get_normalization_coefficients(self, nested_output, nested_probs, nested_features):
+		return self.sigmoid(self.fc1(nested_output))
+
+class AbstractFeatureNormalizationLayer(nn.Module):
+
+	def __init__(self, num_features, num_classes):
+		super(FeatureNormalizationLayer, self).__init__()
+		self.num_features = num_features
+		self.num_classes = num_classes
+		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=num_features)
+
+	def forward(self, nested_output, nested_probs, nested_features, normalized_features):
+		return self.normalize_features(nested_output, nested_probs, nested_features)
+
+	def normalize_features(self, nested_output, nested_probs, nested_features):
+		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features)
+		normalized_features = nested_features * feature_normalizers
+		return normalized_features
+
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+		raise Exception('implement this')
+
+class FeatureNormalizationLayer_RawOutput(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+	 	return = self.sigmoid(self.fc1(nested_output))
+
+class FeatureNormalizationLayer_ProbabilityOutput_Raw(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+		return
