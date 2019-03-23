@@ -152,8 +152,12 @@ def adjust_learning_rate(epoch):
 
 
 
-def save_models(epoch, model_name=MODEL_NAME):
+def save_models(epoch, model_name=MODEL_NAME, accuracy=None):
 	torch.save(model.state_dict(), model_name.format(epoch))
+	if accuracy is not None:
+		file_name = model_name + '.accuracy'
+		with open(file_name, 'w') as f:
+			f.write("{}\n".format(accuracy))
 	print("Checkpoint saved")
 
 def validate():
@@ -163,6 +167,7 @@ def validate():
 		model.train()
 	validate_acc = 0.0
 	validate_loss = 0.0
+	validate_labels = []
 	for i, (images, labels) in enumerate(validate_loader):
 
 		if cuda_avail:
@@ -188,9 +193,12 @@ def validate():
 		else:
 			#Predict classes using images from the validate set
 			outputs = model(images)
-			_,prediction = torch.max(outputs.data, 1)
+			_, prediction = torch.max(outputs.data, 1)
 			# prediction = prediction.cpu().numpy()
 			validate_acc += torch.sum(prediction == labels.data).float()
+
+		for i in range(len(prediction.data)):
+			validate_labels.append(prediction.data[i].item())
 
 
 
@@ -198,7 +206,7 @@ def validate():
 	validate_acc = validate_acc / len(validate_loader.dataset)
 
 	print("validation accuracy: {}".format(validate_acc))
-	return validate_acc
+	return validate_acc, validate_labels
 
 def train(num_epochs, model_name=MODEL_NAME):
 	best_acc = 0.0
@@ -237,11 +245,11 @@ def train(num_epochs, model_name=MODEL_NAME):
 		train_loss = train_loss / len(train_loader.dataset)
 
 		#Evaluate on the validate set
-		validate_acc = validate()
+		validate_acc, validate_labels = validate()
 
 		# Save the model if the validate acc is greater than our current best
 		if validate_acc > best_acc:
-			save_models(epoch, model_name)
+			save_models(epoch, model_name, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
 			best_acc = validate_acc
 
 
