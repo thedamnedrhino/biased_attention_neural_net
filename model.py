@@ -37,10 +37,7 @@ KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
-NETWORK_MAP = {
-		'regular': nets.RegularExtendedNet,
-		'fc_normalized': nets.FCNormalizedNet
-		}
+factory = FeatureNormalizedNetFactory
 
 class Unit(nn.Module):
 	def __init__(self,in_channels,out_channels):
@@ -280,7 +277,7 @@ def test(model, test_loader):
 			print(pickle.load(f))
 
 
-def create_model(extended=False, load_saved=False, NetworkClass=None, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False, nonlinear='sigmoid'):
+def create_model(extended=False, load_saved=False, extended_net_name='', extended_net_args={}, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
 		load_checkpoint(model, checkpoint_name)
@@ -292,7 +289,9 @@ def create_model(extended=False, load_saved=False, NetworkClass=None, checkpoint
 			for p in model.fc.parameters():
 				p.requires_grad = True
 
-		model = NetworkClass(model, nonlinear=nonlinear)
+		# model = nets.ExtendedNetFactory().create_net(extended_net_name, model, nonlinear=nonlinear)
+		model = nets.ExtendedNetFactory().create_net(extended_net_name, model, extended_net_args)
+
 		if extended_checkpoint:
 			load_checkpoint(model, checkpoint_name)
 
@@ -315,7 +314,8 @@ if __name__ == "__main__":
 	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
 	optparser.add_option("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
 	optparser.add_option("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
-	optparser.add_option("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from [{}]".format(','.join(NETWORK_MAP.keys())))
+	optparser.add_option("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from \n{}".format("\n".join(nets.ExtendedNetFactory.items())))
+	optpartser.add_option("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
 	#todo implement -n option
 	(opts, _) = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -332,7 +332,8 @@ if __name__ == "__main__":
 	extended_checkpoint = opts.extendedcheckpoint
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
-	network = NETWORK_MAP[opts.network] if extended else None
+	network = opts.network
+	extended_net_args = {k: v for k, v in [arg.split('=') for arg in opts.netargs]}
 
 	if transformers == '-':
 		transformers = []
@@ -364,9 +365,8 @@ if __name__ == "__main__":
 	cuda_avail = torch.cuda.is_available()
 
 	#Create model, optimizer and loss function
-	model = create_model(extended, load_saved, network,
-			checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc,
-			nonlinear=nonlinear)
+	model = create_model(extended, load_saved, network, extended_net_args=extended_net_args,
+			checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc)
 
 	if cuda_avail:
 		model.cuda()
