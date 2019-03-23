@@ -10,19 +10,20 @@ class ExtendedNetFactory:
 		assert net_name in ExtendedNetFactory.NETS, 'net_name argument must be ExtendedNetFactory.NETS: [{}]'.format(','.join(NETS.keys()))
 
 		constructors = {
-				'reg': nets.RegularExtendedNet,
-				'fcN': nets.FCNormalizedNet,
-				'featNRO': nets.FeatureNormalizedNetFactory().raw_output,
-				'featNPO_R': nets.FeatureNormalizedNetFactory().probability_output_raw,
-				'featNPO_S': nets.FeatureNormalizedNetFactory().probability_output_sigmoid
+				'reg': RegularExtendedNet,
+				'fcN': FCNormalizedNet,
+				'featNRO': FeatureNormalizedNetFactory().raw_output,
+				'featNPO_R': FeatureNormalizedNetFactory().probability_output_raw,
+				'featNPO_S': FeatureNormalizedNetFactory().probability_output_sigmoid
 				}
 
-		return constructors[net_name](nested_model, **net_args)
+		return constructors[net_name](nested_net, **net_args)
 
 
 class AbstractExtendedNet(nn.Module):
 	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
 		super(AbstractExtendedNet, self).__init__()
+		print(nonlinear)
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
 		self.height = nested_model.height

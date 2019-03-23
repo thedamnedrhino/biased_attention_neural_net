@@ -37,7 +37,6 @@ KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
-factory = FeatureNormalizedNetFactory
 
 class Unit(nn.Module):
 	def __init__(self,in_channels,out_channels):
@@ -298,26 +297,27 @@ def create_model(extended=False, load_saved=False, extended_net_name='', extende
 	return model
 
 if __name__ == "__main__":
-	optparser = optparse.OptionParser()
-	optparser.add_option("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
-	optparser.add_option("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
-	optparser.add_option("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
-	optparser.add_option("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
-	optparser.add_option("-v", "--validate_only", dest="validateonly", action="store_true", default=False, help="whether to only validate")
-	optparser.add_option("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
-	optparser.add_option("-m", "--model-name", dest="modelname", default=MODEL_NAME, help="the name to save the best model under")
-	optparser.add_option("-t", "--transformers", dest="transformers", default=None, help="the transformers to use from {" + ', '.join(dataset.TRANSFORMERS.keys()) + "}")
-	optparser.add_option("-l", "--load-checkpoint", dest="checkpointname", default=None, help="input the checkpoint for the model if you want to use one as base")
-	optparser.add_option("--test", dest="test", action="store_true", default=False, help="whether to augment the data")
-	optparser.add_option("-r", "--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
-	optparser.add_option("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
-	optparser.add_option("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
-	optparser.add_option("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
-	optparser.add_option("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
-	optparser.add_option("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from \n{}".format("\n".join(nets.ExtendedNetFactory.items())))
-	optpartser.add_option("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
+	import argparse
+	optparser = argparse.ArgumentParser()
+	optparser.add_argument("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
+	optparser.add_argument("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
+	optparser.add_argument("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
+	optparser.add_argument("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_argument("-v", "--validate_only", dest="validateonly", action="store_true", default=False, help="whether to only validate")
+	optparser.add_argument("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
+	optparser.add_argument("-m", "--model-name", dest="modelname", default=MODEL_NAME, help="the name to save the best model under")
+	optparser.add_argument("-t", "--transformers", dest="transformers", default=None, help="the transformers to use from {" + ', '.join(dataset.TRANSFORMERS.keys()) + "}")
+	optparser.add_argument("-l", "--load-checkpoint", dest="checkpointname", default=None, help="input the checkpoint for the model if you want to use one as base")
+	optparser.add_argument("--test", dest="test", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_argument("-r", "--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_argument("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
+	optparser.add_argument("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
+	optparser.add_argument("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
+	optparser.add_argument("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
+	optparser.add_argument("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from \n{}".format(" **|** ".join(["{}: {}".format(k, v) for k, v in nets.ExtendedNetFactory.NETS.items()])))
+	optparser.add_argument("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
 	#todo implement -n option
-	(opts, _) = optparser.parse_args()
+	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
 	KERNEL_SIZE = int(opts.kernelsize)
 	HIDDEN_CHANNELS = int(opts.hiddenchannels)
