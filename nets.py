@@ -8,13 +8,13 @@ class ExtendedNetFactory:
 
 	def create_net(self, net_name, nested_net, net_args):
 		assert net_name in ExtendedNetFactory.NETS, 'net_name argument must be ExtendedNetFactory.NETS: [{}]'.format(','.join(NETS.keys()))
-
+		net_factory = FeatureNormalizedNetFactory()
 		constructors = {
 				'reg': RegularExtendedNet,
 				'fcN': FCNormalizedNet,
-				'featNRO': FeatureNormalizedNetFactory().raw_output,
-				'featNPO_R': FeatureNormalizedNetFactory().probability_output_raw,
-				'featNPO_S': FeatureNormalizedNetFactory().probability_output_sigmoid
+				'featNRO': net_factory.raw_output,
+				'featNPO_R': net_factory.probability_output_raw,
+				'featNPO_S': net_factory.probability_output_sigmoid
 				}
 
 		return constructors[net_name](nested_net, **net_args)
@@ -23,7 +23,6 @@ class ExtendedNetFactory:
 class AbstractExtendedNet(nn.Module):
 	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
 		super(AbstractExtendedNet, self).__init__()
-		print(nonlinear)
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
 		self.height = nested_model.height
@@ -121,11 +120,11 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 
 		# discard the previous normalized features, we want to normalize the features independently in this net
 		# normalized_features = self.normalize_features(nested_output, nested_probs, nested_features)
-		normalized_features = self.normalization_layer(nested_output, nested_probs, nested_features)
+		normalized_features = self.normalization_layer(nested_output, nested_probs, nested_features, normalized_features)
 
 		output = self.nonlinear(normalized_features)
 
-		output = self.fc2(output)
+		output = self.final_fc(output)
 
 		return output
 
@@ -145,14 +144,10 @@ class FeatureNormalizedNetFactory:
 
 class AbstractFeatureNormalizationLayer(nn.Module):
 
-	def __init__(self, num_classes, num_features, depth, height, width):
-		super(FeatureNormalizationLayer, self).__init__()
+	def __init__(self, num_classes, num_features):
+		super(AbstractFeatureNormalizationLayer, self).__init__()
 		self.num_classes = num_classes
 		self.num_features = num_features
-		assert num_features == depth*height*width
-		self.depth = depth
-		self.height = height
-		self.width = width
 		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=num_features)
 
 	def forward(self, nested_output, nested_probs, nested_features, normalized_features):
@@ -163,15 +158,12 @@ class AbstractFeatureNormalizationLayer(nn.Module):
 		normalized_features = nested_features * feature_normalizers
 		return normalized_features
 
-	def shape(self, linear_features):
-		return linear_features.view(-1, self.depth, self.height, self.width)
-
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
 		raise Exception('implement this')
 
 class FeatureNormalizationLayer_RawOutput(AbstractFeatureNormalizationLayer):
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
-	 	return self.sigmoid(self.normalizer_fc(nested_output))
+	 	return nn.Sigmoid()(self.normalizer_fc(nested_output))
 
 class FeatureNormalizationLayer_ProbabilityOutput_Raw(AbstractFeatureNormalizationLayer):
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
