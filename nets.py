@@ -33,8 +33,9 @@ class AbstractExtendedNet(nn.Module):
 		self.width = nested_model.width
 		self.nested_model = nested_model
 		self.sigmoid = nn.Sigmoid()
+		self.tanh = nn.Tanh()
 		self.relu = nn.ReLU()
-		nonlinearmap = {'sigmoid': self.sigmoid, 'relu': self.relu, 'none': lambda x: x}
+		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'none': lambda x: x}
 		assert nonlinear in nonlinearmap
 		self.nonlinear = nonlinearmap[nonlinear]
 		self.fc_include_class_prob = fc_include_class_prob
