@@ -1,6 +1,29 @@
 import torch
 import torch.nn as nn
 
+
+
+class ExtendedNetFactory:
+	NETS = {'reg': 'regular', 'fcN': 'Fully Connected Layer Normalized', 'featNRO_R': 'Features normalized with normalizers generated from raw output with no non-linear after' ,'featNRO_S': 'Features normalized with normalizers generated from raw output with a tanh after', 'featNRO_Th': 'Features normalized with normalizers generated from raw output with a tanh after' , 'featNPO_R': 'Features normalized with normalizers generated from probability output with no non-linear after', 'featNPO_S': 'Features normalized with normalizers generated from probability output with a sigmoid after', 'featNPO_Th': 'Features normalized with normalizers generated from probability output with a tanh after'}
+
+	def create_net(self, net_name, nested_net, net_args):
+		assert net_name in ExtendedNetFactory.NETS, 'net_name argument must be ExtendedNetFactory.NETS: [{}]'.format(','.join(NETS.keys()))
+		net_factory = FeatureNormalizedNetFactory()
+		constructors = {
+				'reg': RegularExtendedNet,
+				'fcN': FCNormalizedNet,
+				'fcN': FCNormalizedNet,
+				'featNRO_R': net_factory.raw_output_raw,
+				'featNRO_S': net_factory.raw_output_sigmoid,
+				'featNRO_Th': net_factory.raw_output_tanh,
+				'featNPO_R': net_factory.probability_output_raw,
+				'featNPO_S': net_factory.probability_output_sigmoid,
+				'featNPO_Th': net_factory.probability_output_tanh
+				}
+
+		return constructors[net_name](nested_net, **net_args)
+
+
 class AbstractExtendedNet(nn.Module):
 	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
 		super(AbstractExtendedNet, self).__init__()
@@ -54,10 +77,10 @@ class RegularExtendedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
 		self.fc1 = nn.Linear(in_features=self.num_features() + self.num_classes, out_features=self.num_classes**2)
-		self.fc2 = nn.Linear(in_features=num_classes**2 + self.num_classes, out_features=self.num_classes)
+		self.fc2 = nn.Linear(in_features=self.num_classes**2 + self.num_classes, out_features=self.num_classes)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
-		nested_features = self._linearize_features_(nested_features)
+		# nested_features = self._linearize_features_(nested_features)
 		extended_features = torch.cat((nested_output, nested_features), 1)
 		output = self.fc1(torch.cat((nested_features, nested_output), 1))
 		output = self.nonlinear(output)
@@ -87,40 +110,60 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		return output
 
-class FeatureNormalizedWithRawOutputNet(AbstractExtendedNet):
+class FeatureNormalizedNet(AbstractExtendedNet):
+
+	def __init__(self, nested_model, normalization_layer, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
+		super(FeatureNormalizedNet, self).__init__(nested_model, nonlinear, fc_include_class_prob, enable_fc_class_correlate)
+		self.normalization_layer = normalization_layer
+		self.final_fc = nn.Linear(in_features=self.num_features(), out_features=self.num_classes)
 
 	def _init_layers(self):
-		self.fc2 = self._final_fc_(self.num_features())
+		pass # already done in __init__()
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
 		# discard the previous normalized features, we want to normalize the features independently in this net
-		normalized_features = self.normalize_features(nested_output, nested_probs, nested_features)
+		# normalized_features = self.normalize_features(nested_output, nested_probs, nested_features)
+		normalized_features = self.normalization_layer(nested_output, nested_probs, nested_features, normalized_features)
 
 		output = self.nonlinear(normalized_features)
 
-		output = self.fc2(output)
+		output = self.final_fc(output)
 
 		return output
 
+class FeatureNormalizedNetFactory:
+	def __net(self, nested_model, layer, **net_kwargs):
+		return FeatureNormalizedNet(nested_model, layer, **net_kwargs)
 
-class FeatureNormalizedWithProbability_Raw_OutputNet(FeatureNormalizedWithRawOutputNet):
-
-	def get_normalization_coefficients(self, nested_output, nested_probs, nested_features):
-		return self.fc1(nested_output)
-
-class FeatureNormalizedWithProbability_Sigmoid_OutputNet(FeatureNormalizedWithRawOutputNet):
-
-	def get_normalization_coefficients(self, nested_output, nested_probs, nested_features):
-		return self.sigmoid(self.fc1(nested_output))
+	def raw_output_raw(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_RawOutput_Raw(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def raw_output_sigmoid(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_RawOutput_Sigmoid(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def raw_output_tanh(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_RawOutput_Tanh(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def probability_output_raw(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Raw(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def probability_output_sigmoid(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Sigmoid(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def probability_output_tanh(self, nested_model, **kwargs):
+		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Tanh(nested_model.num_classes, nested_model.num_features())
+		return self.__net(nested_model, normalization_layer, **kwargs)
 
 class AbstractFeatureNormalizationLayer(nn.Module):
 
-	def __init__(self, num_features, num_classes):
-		super(FeatureNormalizationLayer, self).__init__()
-		self.num_features = num_features
+	def __init__(self, num_classes, num_features):
+		super(AbstractFeatureNormalizationLayer, self).__init__()
 		self.num_classes = num_classes
+		self.num_features = num_features
 		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=num_features)
+		self.sigmoid = nn.Sigmoid()
+		self.tanh = nn.Tanh()
 
 	def forward(self, nested_output, nested_probs, nested_features, normalized_features):
 		return self.normalize_features(nested_output, nested_probs, nested_features)
@@ -133,10 +176,24 @@ class AbstractFeatureNormalizationLayer(nn.Module):
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
 		raise Exception('implement this')
 
-class FeatureNormalizationLayer_RawOutput(AbstractFeatureNormalizationLayer):
+
+class FeatureNormalizationLayer_RawOutput_Raw(AbstractFeatureNormalizationLayer):
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
-	 	return = self.sigmoid(self.fc1(nested_output))
+	 	return self.normalizer_fc(nested_output)
+class FeatureNormalizationLayer_RawOutput_Sigmoid(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+	 	return self.sigmoid(self.normalizer_fc(nested_output))
+class FeatureNormalizationLayer_RawOutput_Tanh(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+	 	return self.tanh(self.normalizer_fc(nested_output))
 
 class FeatureNormalizationLayer_ProbabilityOutput_Raw(AbstractFeatureNormalizationLayer):
 	def feature_normalizers(self, nested_output, nested_probs, nested_features):
-		return
+		return self.normalizer_fc(nested_probs)
+class FeatureNormalizationLayer_ProbabilityOutput_Sigmoid(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+		return self.sigmoid(self.normalizer_fc(nested_probs))
+class FeatureNormalizationLayer_ProbabilityOutput_Tanh(AbstractFeatureNormalizationLayer):
+	def feature_normalizers(self, nested_output, nested_probs, nested_features):
+		return self.tanh(self.normalizer_fc(nested_probs))
+
