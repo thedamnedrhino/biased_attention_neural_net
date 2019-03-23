@@ -12,7 +12,6 @@ class ExtendedNetFactory:
 		constructors = {
 				'reg': RegularExtendedNet,
 				'fcN': FCNormalizedNet,
-				'fcN': FCNormalizedNet,
 				'featNRO_R': net_factory.raw_output_raw,
 				'featNRO_S': net_factory.raw_output_sigmoid,
 				'featNRO_Th': net_factory.raw_output_tanh,
