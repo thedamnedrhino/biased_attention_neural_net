@@ -14,7 +14,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def create_transformer(self, set, transformers=None):
       if transformers is None:
-        transformers = [      
+        transformers = [
           transforms.RandomHorizontalFlip(p=0.5),
           transforms.RandomRotation(20)
         ]

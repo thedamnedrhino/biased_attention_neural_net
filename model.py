@@ -35,7 +35,9 @@ on the test set.
 
 KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
-MODEL_NAME='convnet.model'
+BATCH_SIZE=32
+MODEL_FILE_NAME='convnet.model'
+AUGMENT=False
 MERGE_VALIDATION=False
 LEARNING_RATE=0.001
 STATIC_LEARNING_RATE=False
@@ -55,7 +57,7 @@ class Unit(nn.Module):
 		return output
 
 class SimpleNet(nn.Module):
-	def __init__(self,num_classes=3, in_channels=3, hidden_channels=8, height=32, width=32):
+	def __init__(self, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32):
 		"""
 		in_channels: number of channels for the input image, e.g 3 for rgb
 		hidden_channels: number of convolutional channels (filters) in each conv layer
@@ -129,201 +131,265 @@ class SimpleNet(nn.Module):
 		output = self.fc(output)
 		return output
 
+class NetworkManager:
+	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, nonlinear=None, extended_net_args={}, train_on_validation=False):
+		"""
+		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
+		validation_labels_file: file name to save the validation labels under - only if validate_only=True
+		checkpoint_file_name: name of the file to load a checkpoint from, falsey for no checkpoint
+		extended_net: name of the extended network, choose from ['reg', 'fcN', 'featNRO_(1)', featNPO_(1)'] where (1) is one of ['R', 'S', 'Th']. Pass falsey for non-extended net.
+		extended_checkpoint: checkpoint will be loaded into the extended network instead of the simple network - only in effect with extended_net != False
+		"""
 
-#Create a learning rate adjustment function that divides the learning rate by 10 every 30 epochs
-def adjust_learning_rate(epoch):
+		self.batch_size = batch_size
+		self.train_transformers = train_transformers
+		self.datadir = datadir
+		self.train_on_validation = train_on_validation
+		self.augment = augment
 
-	if STATIC_LEARNING_RATE:
-		return LEARNING_RATE
+		#Create model, optimizer and loss function
+		self.model = self.create_model(hidden_channels, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
+				checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, nonlinear=None)
 
-	lr = 0.001
+		#Check if gpu support is available
+		self.cuda_avail = torch.cuda.is_available()
 
-	if epoch > 180:
-		lr = lr / 1000000
-	elif epoch > 150:
-		lr = lr / 100000
-	elif epoch > 120:
-		lr = lr / 10000
-	elif epoch > 90:
-		lr = lr / 1000
-	elif epoch > 60:
-		lr = lr / 100
-	elif epoch > 30:
-		lr = lr / 10
-
-	for param_group in optimizer.param_groups:
-		param_group["lr"] = lr
+		if self.cuda_avail:
+			model.cuda()
 
 
+		self.learning_rate = learning_rate
+		self.static_learning_rate = static_learning_rate
+		self.optimizer = Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0001)
+		self.loss_fn = nn.CrossEntropyLoss()
+
+	def create_model(self, hidden_channels, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, nonlinear=None):
+		model = SimpleNet(hidden_channels=hidden_channels)
+		if load_saved and not extended_checkpoint:
+			self.load_checkpoint(model, checkpoint_file_name)
+
+		if extended:
+			for p in model.parameters():
+				p.requires_grad = False
+			if unfreeze_basefc:
+				for p in model.fc.parameters():
+					p.requires_grad = True
+
+			# model = nets.ExtendedNetFactory().create_net(extended_net_name, model, nonlinear=nonlinear)
+			if nonlinear is not None:
+				assert 'nonlinear' not in extended_net_args
+				extended_net_args['nonlinear'] = nonlinear
+			model = nets.ExtendedNetFactory().create_net(extended_net_name, model, extended_net_args)
+
+			if extended_checkpoint:
+				self.load_checkpoint(model, checkpoint_file_name)
+
+		return model
+
+	def __init(self, set):
+		if set == 'train':
+			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers)
+		elif set == 'validate':
+			if not self.train_on_validation:
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, transformers=[])
+			else:
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, transformers=train_transformers, train=True)
+		elif set == 'test':
+			self.test_loader = dataset.create_testloader(self.datadir)
 
 
-def save_models(epoch, model_name=MODEL_NAME, accuracy=None):
-	torch.save(model.state_dict(), model_name.format(epoch))
-	if accuracy is not None:
-		file_name = model_name + '.accuracy'
-		with open(file_name, 'w') as f:
-			f.write("{}\n".format(accuracy))
-	print("Checkpoint saved")
+	def train(self, num_epochs, save_model_file_name):
+		self.__init('train')
 
-def validate():
-	if not MERGE_VALIDATION:
-		model.eval()
-	else:
-		model.train()
-	validate_acc = 0.0
-	validate_loss = 0.0
-	validate_labels = []
-	for i, (images, labels) in enumerate(validate_loader):
+		model = self.model
+		train_loader = self.train_loader
+		optimizer = self.optimizer
+		loss_fn = self.loss_fn
 
-		if cuda_avail:
-			images = Variable(images.cuda())
-			labels = Variable(labels.cuda())
+		best_acc = 0.0
+		for epoch in range(num_epochs):
+			model.train()
+			train_acc = 0.0
+			train_loss = 0.0
+			for i, (images, labels) in enumerate(train_loader):
+				#Move images and labels to gpu if available
+				if self.cuda_avail:
+					images = Variable(images.cuda())
+					labels = Variable(labels.cuda())
 
-		if MERGE_VALIDATION:
-			#Clear all accumulated gradients
-			optimizer.zero_grad()
-			#Predict classes using images from the validate set
-			outputs = model(images)
-			#Compute the loss based on the predictions and actual labels
-			loss = loss_fn(outputs,labels)
-			#Backpropagate the loss
-			loss.backward()
+				#Clear all accumulated gradients
+				optimizer.zero_grad()
+				#Predict classes using images from the validate set
+				outputs = model(images)
+				#Compute the loss based on the predictions and actual labels
+				loss = loss_fn(outputs,labels)
+				#Backpropagate the loss
+				loss.backward()
 
-			#Adjust parameters according to the computed gradients
-			optimizer.step()
+				#Adjust parameters according to the computed gradients
+				optimizer.step()
 
-			validate_loss += loss.cpu().item() * images.size(0)
-			_, prediction = torch.max(outputs.data, 1)
-			validate_acc += torch.sum(prediction == labels.data).float()
+				train_loss += loss.cpu().item() * images.size(0)
+				_, prediction = torch.max(outputs.data, 1)
+				train_acc += torch.sum(prediction == labels.data).float()
+
+			#Call the learning rate adjustment function
+			self.adjust_learning_rate(epoch)
+
+			#Compute the average acc and loss over all 50000 training images
+			train_acc = train_acc / float(len(train_loader.dataset))
+			train_loss = train_loss / len(train_loader.dataset)
+
+			#Evaluate on the validate set
+			validate_acc, validate_labels = self.validate()
+
+			# Save the model if the validate acc is greater than our current best
+			if validate_acc > best_acc:
+				self.save_models(epoch, save_model_file_name, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
+				best_acc = validate_acc
+
+
+			# Print the metrics
+			print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
+
+	def validate(self):
+		self.__init('validate')
+
+		model = self.model
+		validate_loader = self.validate_loader
+		optimizer = self.optimizer
+		loss_fn = self.loss_fn
+		train = self.train_on_validation
+
+		if train:
+			model.train()
 		else:
-			#Predict classes using images from the validate set
-			outputs = model(images)
-			_, prediction = torch.max(outputs.data, 1)
-			# prediction = prediction.cpu().numpy()
-			validate_acc += torch.sum(prediction == labels.data).float()
+			model.eval()
+		validate_acc = 0.0
+		validate_loss = 0.0
+		validate_labels = []
+		for i, (images, labels) in enumerate(validate_loader):
 
-		for i in range(len(prediction.data)):
-			validate_labels.append(prediction.data[i].item())
-
-
-
-	#Compute the average acc and loss over all 10000 validate images
-	validate_acc = validate_acc / len(validate_loader.dataset)
-
-	print("validation accuracy: {}".format(validate_acc))
-	return validate_acc, validate_labels
-
-def train(num_epochs, model_name=MODEL_NAME):
-	best_acc = 0.0
-
-	for epoch in range(num_epochs):
-		model.train()
-		train_acc = 0.0
-		train_loss = 0.0
-		for i, (images, labels) in enumerate(train_loader):
-			#Move images and labels to gpu if available
-			if cuda_avail:
+			if self.cuda_avail:
 				images = Variable(images.cuda())
 				labels = Variable(labels.cuda())
 
-			#Clear all accumulated gradients
-			optimizer.zero_grad()
-			#Predict classes using images from the validate set
+			if train:
+				#Clear all accumulated gradients
+				optimizer.zero_grad()
+				#Predict classes using images from the validate set
+				outputs = model(images)
+				#Compute the loss based on the predictions and actual labels
+				loss = loss_fn(outputs,labels)
+				#Backpropagate the loss
+				loss.backward()
+
+				#Adjust parameters according to the computed gradients
+				optimizer.step()
+
+				validate_loss += loss.cpu().item() * images.size(0)
+				_, prediction = torch.max(outputs.data, 1)
+				validate_acc += torch.sum(prediction == labels.data).float()
+			else:
+				#Predict classes using images from the validate set
+				outputs = model(images)
+				_, prediction = torch.max(outputs.data, 1)
+				# prediction = prediction.cpu().numpy()
+				validate_acc += torch.sum(prediction == labels.data).float()
+
+			for i in range(len(prediction.data)):
+				validate_labels.append(prediction.data[i].item())
+
+
+
+		#Compute the average acc and loss over all 10000 validate images
+		validate_acc = validate_acc / len(validate_loader.dataset)
+
+		print("validation accuracy: {}".format(validate_acc))
+		return validate_acc, validate_labels
+
+	def test(self, label_file_name='testlabel.pickle'):
+		self.__init('test')
+
+		model = self.model
+		test_loader = self.test_loader
+		ls = []
+		model.eval()
+		import pickle
+		for i, (images, labels) in enumerate(test_loader):
 			outputs = model(images)
-			#Compute the loss based on the predictions and actual labels
-			loss = loss_fn(outputs,labels)
-			#Backpropagate the loss
-			loss.backward()
+			_,prediction = torch.max(outputs.data, 1)
+			print(prediction)
 
-			#Adjust parameters according to the computed gradients
-			optimizer.step()
+			with open(datadir+label_file_name, 'rb') as f:
+				labels = pickle.load(f)
 
-			train_loss += loss.cpu().item() * images.size(0)
-			_, prediction = torch.max(outputs.data, 1)
-			train_acc += torch.sum(prediction == labels.data).float()
+			for i in range(len(labels)):
+				labels[i] = prediction.data[i].item()
 
-		#Call the learning rate adjustment function
-		adjust_learning_rate(epoch)
+			with open(datadir+label_file_name, 'wb') as f:
+				pickle.dump(labels, f)
 
-		#Compute the average acc and loss over all 50000 training images
-		train_acc = train_acc / float(len(train_loader.dataset))
-		train_loss = train_loss / len(train_loader.dataset)
+			with open(datadir+label_file_name, 'rb') as f:
+				print(pickle.load(f))
 
-		#Evaluate on the validate set
-		validate_acc, validate_labels = validate()
-
-		# Save the model if the validate acc is greater than our current best
-		if validate_acc > best_acc:
-			save_models(epoch, model_name, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
-			best_acc = validate_acc
+	def load_checkpoint(self, model, checkpoint_name):
+		if not torch.cuda.is_available():
+			model.load_state_dict(torch.load(checkpoint_name, map_location='cpu'))
+		else:
+			model.load_state_dict(torch.load(checkpoint_name))
 
 
-		# Print the metrics
-		print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
+	def save_models(self, epoch, model_file_name, accuracy=None):
+		torch.save(self.model.state_dict(), model_file_name.format(epoch))
+		if accuracy is not None:
+			file_name = model_file_name + '.accuracy'
+			with open(file_name, 'w') as f:
+				f.write("{}\n".format(accuracy))
+		print("checkpoint saved")
 
-def load_checkpoint(model, checkpoint_name):
-	if not torch.cuda.is_available():
-		model.load_state_dict(torch.load(checkpoint_name, map_location='cpu'))
-	else:
-		model.load_state_dict(torch.load(checkpoint_name))
-
-def test(model, test_loader):
-	ls = []
-	model.eval()
-	import pickle
-	for i, (images, labels) in enumerate(test_loader):
-		outputs = model(images)
-		_,prediction = torch.max(outputs.data, 1)
-		print(prediction)
-
-		with open(datadir+'/testlabel.pickle', 'rb') as f:
-			labels = pickle.load(f)
-
-		for i in range(len(labels)):
-			labels[i] = prediction.data[i].item()
-
-		with open(datadir+'/testlabel.pickle', 'wb') as f:
+	def save_labels(self, labels, file_name):
+		with open(file_name, 'wb') as f:
 			pickle.dump(labels, f)
 
-		with open(datadir+'/testlabel.pickle', 'rb') as f:
-			print(pickle.load(f))
+#create a learning rate adjustment function that divides the learning rate by 10 every 30 epochs
+	def adjust_learning_rate(self, epoch):
 
+		if self.static_learning_rate:
+			return self.learning_rate
 
-def save_labels(labels, file_name):
-	with open(file_name, 'wb') as f:
-		pickle.dump(labels, f)
+		lr = self.learning_rate
 
+		if epoch > 180:
+			lr = lr / 10
+		elif epoch > 150:
+			lr = lr / 10
+		elif epoch > 120:
+			lr = lr / 10
+		elif epoch > 90:
+			lr = lr / 10
+		elif epoch > 60:
+			lr = lr / 10
+		elif epoch > 30:
+			lr = lr / 10
 
-def create_model(extended=False, load_saved=False, extended_net_name='', extended_net_args={}, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False):
-	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
-	if load_saved and not extended_checkpoint:
-		load_checkpoint(model, checkpoint_name)
+		for param_group in self.optimizer.param_groups:
+			param_group["lr"] = lr
 
-	if extended:
-		for p in model.parameters():
-			p.requires_grad = False
-		if unfreeze_basefc:
-			for p in model.fc.parameters():
-				p.requires_grad = True
+		self.learning_rate = lr
 
-		# model = nets.ExtendedNetFactory().create_net(extended_net_name, model, nonlinear=nonlinear)
-		model = nets.ExtendedNetFactory().create_net(extended_net_name, model, extended_net_args)
-
-		if extended_checkpoint:
-			load_checkpoint(model, checkpoint_name)
-
-	return model
 
 if __name__ == "__main__":
 	import argparse
 	optparser = argparse.ArgumentParser()
 	optparser.add_argument("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
+	optparser.add_argument("-b", "--batch-size", type=int, dest="batchsize", default=BATCH_SIZE, help="training batch size")
 	optparser.add_argument("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
 	optparser.add_argument("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
-	optparser.add_argument("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_argument("-a", "--augment", dest="augment", action="store_true", default=AUGMENT, help="enable augmenting the data")
 	optparser.add_argument("-v", "--validate_only", dest="validateonly", nargs='?', const='validation_labels.pickle', default=False, help="whether to only validate and store the validation labels in the path provided as value to this option - defaults to validation_labels.pickle")
 	optparser.add_argument("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
-	optparser.add_argument("-m", "--model-name", dest="modelname", default=MODEL_NAME, help="the name to save the best model under")
+	optparser.add_argument("-m", "--model-file-name", dest="modelfilename", default=MODEL_FILE_NAME, help="the name to save the best model under")
 	optparser.add_argument("-t", "--transformers", dest="transformers", default=None, help="the transformers to use from {" + ', '.join(dataset.TRANSFORMERS.keys()) + "}")
 	optparser.add_argument("-l", "--load-checkpoint", dest="checkpointname", default=None, help="input the checkpoint for the model if you want to use one as base")
 	optparser.add_argument("--test", dest="test", action="store_true", default=False, help="whether to augment the data")
@@ -334,34 +400,66 @@ if __name__ == "__main__":
 	optparser.add_argument("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
 	optparser.add_argument("-n", "--network", dest="network", default="fcN", help="the extended network to use (only with -x). Choose from \n{}".format(" **|** ".join(["{}: {}".format(k, v) for k, v in nets.ExtendedNetFactory.NETS.items()])))
 	optparser.add_argument("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
-	optparser.add_argument("-r", "--learning-rate", dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
+	optparser.add_argument("-r", "--learning-rate", type=float, dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
-	KERNEL_SIZE = int(opts.kernelsize)
-	HIDDEN_CHANNELS = int(opts.hiddenchannels)
+	batch_size = opts.batchsize
+	kernel_size = int(opts.kernelsize)
+	hidden_channels = int(opts.hiddenchannels)
 	datadir = opts.datadir
+	augment = opts.augment
 	transformers = opts.transformers
 	checkpoint_name = opts.checkpointname
 	load_saved = bool(checkpoint_name)
 	validate_only = opts.validateonly
 	test_only = opts.test
-	MERGE_VALIDATION = opts.mergevalidation
+	merge_validation = opts.mergevalidation
 	extended = opts.extended
 	extended_checkpoint = opts.extendedcheckpoint
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
 	network = opts.network
+	learning_rate = LEARNING_RATE
+	static_learning_rate = STATIC_LEARNING_RATE
 	if opts.learningrate is not False:
-		LEARNING_RATE = float(opts.learningrate)
-		STATIC_LEARNING_RATE = True
+		learning_rate = float(opts.learningrate)
+		static_learning_rate = True
+
 	extended_net_args = {k: v for k, v in [arg.split('=') for arg in opts.netargs]}
+	def normalize_input_args(args):
+		for k, v in args.items():
+			if v in ['true', 'True']:
+				v = True
+			elif v in ['false', 'False']:
+				v = False
+			elif v in ['None', 'null', 'Null']:
+				v = None
+			elif v in ['[]']:
+				v = []
+			args[k] = v
+		return args
+	extended_net_args = normalize_input_args(extended_net_args)
+
 
 	if transformers == '-':
 		transformers = []
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
 
+	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, nonlinear=nonlinear, extended_net_args=extended_net_args, train_on_validation=merge_validation)
+
+	if not validate_only and not test_only:
+		net_man.train(epochs, opts.modelfilename)
+	if validate_only:
+		accuracy, labels = net_man.validate()
+		# validate_only is also the file name!
+		print(accuracy.item())
+		print(len(labels))
+		net_man.save_labels(labels, validate_only)
+	if test_only:
+		net_man.test()
+"""
 	#Define transformations for the training set, flip the images randomly, crop out and apply mean and std normalization
 	train_transformations = transforms.Compose([
 		transforms.RandomHorizontalFlip(),
@@ -377,34 +475,4 @@ if __name__ == "__main__":
 		transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
 
 	])
-
-	batch_size = 32
-	train_loader = dataset.create_dataloader(datadir, 'train', batch_size, transformers=transformers)
-	validate_loader = dataset.create_dataloader(datadir, 'valid', batch_size, transformers=[])
-
-
-	#Check if gpu support is available
-	cuda_avail = torch.cuda.is_available()
-
-	#Create model, optimizer and loss function
-	model = create_model(extended, load_saved, network, extended_net_args=extended_net_args,
-			checkpoint_name=checkpoint_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc)
-
-	if cuda_avail:
-		model.cuda()
-
-	optimizer = Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=0.0001)
-	loss_fn = nn.CrossEntropyLoss()
-
-	if not validate_only and not test_only:
-		train(epochs, opts.modelname)
-	if validate_only:
-		accuracy, labels = validate()
-		# validate_only is also the file name!
-		print(accuracy.item())
-		print(len(labels))
-		save_labels(labels, validate_only)
-	if test_only:
-		test_loader = dataset.create_testloader(datadir)
-		test(model, test_loader)
-
+"""
