@@ -37,6 +37,8 @@ KERNEL_SIZE=5
 HIDDEN_CHANNELS=12
 MODEL_NAME='convnet.model'
 MERGE_VALIDATION=False
+LEARNING_RATE=0.001
+STATIC_LEARNING_RATE=False
 
 class Unit(nn.Module):
 	def __init__(self,in_channels,out_channels):
@@ -130,6 +132,9 @@ class SimpleNet(nn.Module):
 
 #Create a learning rate adjustment function that divides the learning rate by 10 every 30 epochs
 def adjust_learning_rate(epoch):
+
+	if STATIC_LEARNING_RATE:
+		return LEARNING_RATE
 
 	lr = 0.001
 
@@ -284,6 +289,11 @@ def test(model, test_loader):
 			print(pickle.load(f))
 
 
+def save_labels(labels, file_name):
+	with open(file_name, 'wb') as f:
+		pickle.dump(labels, f)
+
+
 def create_model(extended=False, load_saved=False, extended_net_name='', extended_net_args={}, checkpoint_name=None, extended_checkpoint=None, unfreeze_basefc=False):
 	model = SimpleNet(hidden_channels=HIDDEN_CHANNELS)
 	if load_saved and not extended_checkpoint:
@@ -311,19 +321,20 @@ if __name__ == "__main__":
 	optparser.add_argument("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
 	optparser.add_argument("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
 	optparser.add_argument("-a", "--augment", dest="augment", action="store_true", default=False, help="whether to augment the data")
-	optparser.add_argument("-v", "--validate_only", dest="validateonly", action="store_true", default=False, help="whether to only validate")
+	optparser.add_argument("-v", "--validate_only", dest="validateonly", nargs='?', const='validation_labels.pickle', default=False, help="whether to only validate and store the validation labels in the path provided as value to this option - defaults to validation_labels.pickle")
 	optparser.add_argument("-d", "--data-directory", dest="datadir", default="./datasets", help="the dataset directory")
 	optparser.add_argument("-m", "--model-name", dest="modelname", default=MODEL_NAME, help="the name to save the best model under")
 	optparser.add_argument("-t", "--transformers", dest="transformers", default=None, help="the transformers to use from {" + ', '.join(dataset.TRANSFORMERS.keys()) + "}")
 	optparser.add_argument("-l", "--load-checkpoint", dest="checkpointname", default=None, help="input the checkpoint for the model if you want to use one as base")
 	optparser.add_argument("--test", dest="test", action="store_true", default=False, help="whether to augment the data")
-	optparser.add_argument("-r", "--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
+	optparser.add_argument("--merge-validation", dest="mergevalidation", action="store_true", default=False, help="whether to augment the data")
 	optparser.add_argument("-x", "--extended", dest="extended", action="store_true", default=False, help="whether to use the extended model")
 	optparser.add_argument("--extended-checkpoint", dest="extendedcheckpoint", action="store_true", default=False, help="whether to use the supplied checkpoint is for the extended model and not the nested original")
 	optparser.add_argument("-u", "--unfreeze-fc", dest="unfreezefc", action="store_true", default=False, help="Unfreeze the fc of the base model. Only in effect with -x")
 	optparser.add_argument("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear function after the first fc of the extended net. Choose between 'relu', 'sigmoid', 'none'")
-	optparser.add_argument("-n", "--network", dest="network", default="fc_normalized", help="the extended network to use (only with -x). Choose from \n{}".format(" **|** ".join(["{}: {}".format(k, v) for k, v in nets.ExtendedNetFactory.NETS.items()])))
+	optparser.add_argument("-n", "--network", dest="network", default="fcN", help="the extended network to use (only with -x). Choose from \n{}".format(" **|** ".join(["{}: {}".format(k, v) for k, v in nets.ExtendedNetFactory.NETS.items()])))
 	optparser.add_argument("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
+	optparser.add_argument("-r", "--learning-rate", dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -341,6 +352,9 @@ if __name__ == "__main__":
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
 	network = opts.network
+	if opts.learningrate is not False:
+		LEARNING_RATE = float(opts.learningrate)
+		STATIC_LEARNING_RATE = True
 	extended_net_args = {k: v for k, v in [arg.split('=') for arg in opts.netargs]}
 
 	if transformers == '-':
@@ -379,13 +393,17 @@ if __name__ == "__main__":
 	if cuda_avail:
 		model.cuda()
 
-	optimizer = Adam(model.parameters(), lr=0.001,weight_decay=0.0001)
+	optimizer = Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=0.0001)
 	loss_fn = nn.CrossEntropyLoss()
 
 	if not validate_only and not test_only:
 		train(epochs, opts.modelname)
 	if validate_only:
-		validate()
+		accuracy, labels = validate()
+		# validate_only is also the file name!
+		print(accuracy.item())
+		print(len(labels))
+		save_labels(labels, validate_only)
 	if test_only:
 		test_loader = dataset.create_testloader(datadir)
 		test(model, test_loader)
