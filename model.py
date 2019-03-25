@@ -191,9 +191,9 @@ class NetworkManager:
 			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers)
 		elif set == 'validate':
 			if not self.train_on_validation:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, transformers=[])
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, shuffle=False, transformers=[])
 			else:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, transformers=train_transformers, train=True)
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, shuffle=True, transformers=train_transformers, train=True)
 		elif set == 'test':
 			self.test_loader = dataset.create_testloader(self.datadir)
 
