@@ -3,3 +3,4 @@ torch
 torchvision
 jupyter
 tornado<6.0
+tabulate
