@@ -132,7 +132,7 @@ class SimpleNet(nn.Module):
 		return output
 
 class NetworkManager:
-	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, nonlinear=None, extended_net_args={}, train_on_validation=False):
+	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, extended_net_args={}, train_on_validation=False):
 		"""
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
 		validation_labels_file: file name to save the validation labels under - only if validate_only=True
@@ -149,7 +149,7 @@ class NetworkManager:
 
 		#Create model, optimizer and loss function
 		self.model = self.create_model(hidden_channels, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
-				checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, nonlinear=None)
+				checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=None)
 
 		#Check if gpu support is available
 		self.cuda_avail = torch.cuda.is_available()
@@ -163,17 +163,18 @@ class NetworkManager:
 		self.optimizer = Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0001)
 		self.loss_fn = nn.CrossEntropyLoss()
 
-	def create_model(self, hidden_channels, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, nonlinear=None):
+	def create_model(self, hidden_channels, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None):
 		model = SimpleNet(hidden_channels=hidden_channels)
 		if load_saved and not extended_checkpoint:
 			self.load_checkpoint(model, checkpoint_file_name)
 
 		if extended:
-			for p in model.parameters():
-				p.requires_grad = False
-			if unfreeze_basefc:
-				for p in model.fc.parameters():
-					p.requires_grad = True
+			if not unfreeze_all:
+				for p in model.parameters():
+					p.requires_grad = False
+				if unfreeze_basefc:
+					for p in model.fc.parameters():
+						p.requires_grad = True
 
 			# model = nets.ExtendedNetFactory().create_net(extended_net_name, model, nonlinear=nonlinear)
 			if nonlinear is not None:
@@ -401,6 +402,7 @@ if __name__ == "__main__":
 	optparser.add_argument("-n", "--network", dest="network", default="fcN", help="the extended network to use (only with -x). Choose from \n{}".format(" **|** ".join(["{}: {}".format(k, v) for k, v in nets.ExtendedNetFactory.NETS.items()])))
 	optparser.add_argument("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
 	optparser.add_argument("-r", "--learning-rate", type=float, dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
+	optparser.add_argument("--unfreeze-all", default=False, action="store_true", dest="unfreezeall", help="whether to unfreeze all layers in the base network (only with -x)")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -447,7 +449,7 @@ if __name__ == "__main__":
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
 
-	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, nonlinear=nonlinear, extended_net_args=extended_net_args, train_on_validation=merge_validation)
+	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args, train_on_validation=merge_validation)
 
 	if not validate_only and not test_only:
 		net_man.train(epochs, opts.modelfilename)
