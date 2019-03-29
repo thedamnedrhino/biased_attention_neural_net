@@ -18,8 +18,14 @@ $ python -m venv venv
 Then you would have to install the requirements (after activating the virtual environment through `source venv/bin/activate`:
 
 ```
-pip install -r requirements.txt
+$ pip install -r requirements.txt
 ```
+
+Extract the dataset:
+```
+$ unzip data.zip
+```
+This will create a folder called `dataset` with the relevan files.
 
 ## Running
 First extract the data. It would be easiest to put the contents in a folder called `datasets` in the same folder as the code.  
