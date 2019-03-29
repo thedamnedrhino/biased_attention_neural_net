@@ -13,12 +13,12 @@
 NETS=(featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th)
 NON_LINEARS=(none relu sigmoid tanh)
 JOB_NUM=${SLURM_ARRAY_TASK_ID}
-let NON_LINEAR_INDEX=${JOB_NUM}%6
-let NET_INDEX=${JOB_NUM}/6
+let NON_LINEAR_INDEX=${JOB_NUM}%4
+let NET_INDEX=${JOB_NUM}/4
 
 NET=${NETS[${NET_INDEX}]}
 NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
 
 source startup.sh
-python model.py -e 120 -d '../datasets' -a -m ${NET}_${NON_LINEAR}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR}
+python model.py -e 120 -d '../datasets' -a -m ${NET}_${NON_LINEAR}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} --unfreeze-all > ${NET}_${NON_LINEAR}.out
 
