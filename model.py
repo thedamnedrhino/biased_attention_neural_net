@@ -234,6 +234,8 @@ class NetworkManager:
 				_, prediction = torch.max(outputs.data, 1)
 				train_acc += torch.sum(prediction == labels.data).float()
 
+			model.print_outputs()
+
 			#Call the learning rate adjustment function
 			self.adjust_learning_rate(epoch)
 

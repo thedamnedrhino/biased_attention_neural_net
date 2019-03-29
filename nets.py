@@ -24,7 +24,7 @@ class ExtendedNetFactory:
 
 
 class AbstractExtendedNet(nn.Module):
-	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
+	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, **kwargs):
 		super(AbstractExtendedNet, self).__init__()
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
@@ -34,13 +34,20 @@ class AbstractExtendedNet(nn.Module):
 		self.sigmoid = nn.Sigmoid()
 		self.tanh = nn.Tanh()
 		self.relu = nn.ReLU()
-		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'none': lambda x: x}
+		self.softmax = nn.Softmax()
+		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'softmax': self.softmax, 'none': lambda x: x}
 		assert nonlinear in nonlinearmap
 		self.nonlinear = nonlinearmap[nonlinear]
 		self.fc_include_class_prob = fc_include_class_prob
 		self.fc_class_correlate = nn.Linear(in_features=self.num_classes, out_features=self.num_classes)
 		self.enable_fc_class_correlate = enable_fc_class_correlate
+		self.include_original = include_original
+		for k, v in kwargs:
+			self.__set_attr__(k, v)
 
+		self.normalizeds = None
+		self.normals = None
+		self.ratio = None
 		self._init_layers()
 
 	def num_features(self):
@@ -72,18 +79,33 @@ class AbstractExtendedNet(nn.Module):
 		raise Exception('implement this')
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 		raise Exception('implement this')
+	def print_outputs(self):
+		try:
+			if self.normalizeds is not None and self.normals is not None:
+				print("normals:\n{}".format(self.normals))
+				print("------------\nnormalized:\n{}".format(self.normalizeds))
+				print("------------\nratio:\n{}".format(self.ratio))
+				print("/////////")
+		except Exception as e:
+			print(e)
 
 class RegularExtendedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
+		if self.include_original is False:
+			raise Exception('the "regular" extended net does not work without the originals')
 		self.fc1 = nn.Linear(in_features=self.num_features() + self.num_classes, out_features=self.num_classes**2)
 		self.fc2 = nn.Linear(in_features=self.num_classes**2 + self.num_classes, out_features=self.num_classes)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 		# nested_features = self._linearize_features_(nested_features)
+		nested_features, nested_output = nested_features/self.num_features(), nested_output/self.num_classes
 		extended_features = torch.cat((nested_output, nested_features), 1)
-		output = self.fc1(torch.cat((nested_features, nested_output), 1))
+		self.normalizeds, self.normals = torch.sum(nested_features), torch.sum(nested_output)
+		self.ratio = self.normalizeds/self.normals
+		output = self.fc1(extended_features)
 		output = self.nonlinear(output)
+		nested_output = self.nonlinear(nested_output)
 		output = self.fc2(torch.cat((output, nested_output), 1))
 		return output
 
@@ -91,22 +113,27 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
 		# all the features plus the class probability for each class go in
-		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + self.num_classes, out_features=self.num_classes)
+		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + int(self.include_original)*self.num_classes**2, out_features=self.num_classes)
 		self.fc2 = nn.Linear(in_features=self.num_classes + self.num_classes, out_features=self.num_classes) # inputs are from previous layer and last layer in the base net
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
-		normalized_output = nested_output * nested_probs
 
 		normalized_features = self._linearize_features_(normalized_features)
 
-		normalized_features = torch.cat((normalized_features, normalized_output), 1)
+		if self.include_original:
+			normalized_output = nested_output.unsqueeze(1).transpose(-2, -1).matmul(nested_probs.unsqueeze(1)).view(-1, self.num_classes**2)
+			normalized_features = normalized_features / self.num_features()
+			normalized_output = normalized_output / self.num_classes
+			normalized_features = torch.cat((normalized_features, normalized_output), 1)
+			self.normalizeds, self.normals = (torch.sum(normalized_features), torch.sum(normalized_features**2)), (torch.sum(normalized_output), torch.sum(normalized_output**2))
 
 		output = self.fc1(normalized_features)
 
 		output, nested_output = self.nonlinear(output), self.nonlinear(nested_output)
-
 		output = self.fc2(torch.cat((output, nested_output), 1))
+
+		# self.normalizeds, self.normals = output, nested_output
 
 		return output
 
@@ -128,6 +155,7 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 
 		output = self.nonlinear(normalized_features)
 
+		self.normalizeds, self.normals = output, []
 		output = self.final_fc(output)
 
 		return output
