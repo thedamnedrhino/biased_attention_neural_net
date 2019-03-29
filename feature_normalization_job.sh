@@ -20,5 +20,5 @@ NET=${NETS[${NET_INDEX}]}
 NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
 
 source startup.sh
-python model.py -e 120 -d '../datasets' -a -m ${NET}_${NON_LINEAR}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR}
+python model.py -e 120 -d '../datasets' -a -m ${NET}_${NON_LINEAR}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} > ${NET}_${NON_LINEAR}.out
 
