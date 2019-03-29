@@ -346,7 +346,7 @@ class NetworkManager:
 		if accuracy is not None:
 			file_name = model_file_name + '.accuracy'
 			with open(file_name, 'w') as f:
-				f.write("{}\n".format(accuracy))
+				f.write("epoch: {}, accuracy: {}\n".format(epoch, accuracy))
 		print("checkpoint saved")
 
 	def save_labels(self, labels, file_name):
