@@ -45,9 +45,8 @@ class AbstractExtendedNet(nn.Module):
 		for k, v in kwargs:
 			self.__set_attr__(k, v)
 
-		self.normalizeds = None
-		self.normals = None
-		self.ratio = None
+		self.outputs = None
+		self.add_outputs = []
 		self._init_layers()
 
 	def num_features(self):
@@ -80,14 +79,24 @@ class AbstractExtendedNet(nn.Module):
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 		raise Exception('implement this')
 	def print_outputs(self):
-		try:
-			if self.normalizeds is not None and self.normals is not None:
-				print("normals:\n{}".format(self.normals))
-				print("------------\nnormalized:\n{}".format(self.normalizeds))
-				print("------------\nratio:\n{}".format(self.ratio))
-				print("/////////")
-		except Exception as e:
-			print(e)
+		if self.outputs is None:
+			return
+		print(self.outputs)
+
+	def save_output_values(self, new_output, old_output):
+		outputs = {
+				'new_output_sum': torch.sum(new_output).item(),
+				'new_output^2_sum': torch.sum(new_output**2).item(),
+				'new_output^2_max': torch.max(new_output**2).item(),
+				'new_output^2_mean': torch.mean(new_output**2).item(),
+				'old_output_sum': torch.sum(old_output).item(),
+				'old_output^2_sum': torch.sum(old_output**2).item(),
+				'old_output^2_max': torch.max(old_output**2).item(),
+				'old_output^2_mean': torch.mean(old_output**2).item()
+				}
+		self.outputs = "new - size: {}, sum: {}, ^2sum: {}, ^2max: {}, ^2_mean: {}\n".format(new_output.size(), outputs['new_output_sum'], outputs['new_output^2_sum'], outputs['new_output^2_max'], outputs['new_output^2_mean'])
+		self.outputs += "old - size: {}, sum: {}, ^2sum: {}, ^2max: {}, ^2_mean: {}\n".format(old_output.size(), outputs['old_output_sum'], outputs['old_output^2_sum'], outputs['old_output^2_max'], outputs['old_output^2_mean'])
+		self.outputs += ("\n").join(["{}".format(e) for e in self.add_outputs])
 
 class RegularExtendedNet(AbstractExtendedNet):
 
@@ -101,8 +110,7 @@ class RegularExtendedNet(AbstractExtendedNet):
 		# nested_features = self._linearize_features_(nested_features)
 		nested_features, nested_output = nested_features/self.num_features(), nested_output/self.num_classes
 		extended_features = torch.cat((nested_output, nested_features), 1)
-		self.normalizeds, self.normals = torch.sum(nested_features), torch.sum(nested_output)
-		self.ratio = self.normalizeds/self.normals
+		self.save_output_values(nested_features, nested_output)
 		output = self.fc1(extended_features)
 		output = self.nonlinear(output)
 		nested_output = self.nonlinear(nested_output)
@@ -118,15 +126,26 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
+		def save_stats(self):
+			"""
+			call this to print some additional stats about the inputs
+			"""
+			shaped = self.nested_model.features
+			s = shaped**2
+			s = s.view(s.size(0), self.hidden_channels, -1)
+			atts = {
+					'max': torch.max(s, 2),
+					'mean': torch.mean(s, 2),
+					}
+			self.add_outputs.append("original nested feature stats: {}".format(atts))
 
 		normalized_features = self._linearize_features_(normalized_features)
-
 		if self.include_original:
 			normalized_output = nested_output.unsqueeze(1).transpose(-2, -1).matmul(nested_probs.unsqueeze(1)).view(-1, self.num_classes**2)
 			normalized_features = normalized_features / self.num_features()
 			normalized_output = normalized_output / self.num_classes
+			self.save_output_values(normalized_features, normalized_output)
 			normalized_features = torch.cat((normalized_features, normalized_output), 1)
-			self.normalizeds, self.normals = (torch.sum(normalized_features), torch.sum(normalized_features**2)), (torch.sum(normalized_output), torch.sum(normalized_output**2))
 
 		output = self.fc1(normalized_features)
 
