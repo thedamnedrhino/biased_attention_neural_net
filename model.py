@@ -155,7 +155,7 @@ class NetworkManager:
 		self.cuda_avail = torch.cuda.is_available()
 
 		if self.cuda_avail:
-			model.cuda()
+			self.model.cuda()
 
 
 		self.learning_rate = learning_rate
