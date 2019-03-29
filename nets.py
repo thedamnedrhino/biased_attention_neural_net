@@ -121,8 +121,10 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
 		# all the features plus the class probability for each class go in
-		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + int(self.include_original)*self.num_classes**2, out_features=self.num_classes)
-		self.fc2 = nn.Linear(in_features=self.num_classes + self.num_classes, out_features=self.num_classes) # inputs are from previous layer and last layer in the base net
+		# self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + int(self.include_original)*self.num_classes**2, out_features=self.num_classes)
+		# I decided against the above, because combining feature maps, with class values (i.e: result of passing maps through an FC) is hard see notes in self._process()
+		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes, out_features=self.num_classes)
+		self.fc2 = nn.Linear(in_features=self.num_classes + int(self.include_original) * self.num_classes, out_features=self.num_classes) # inputs are from previous layer and last layer in the base net
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
@@ -139,18 +141,33 @@ class FCNormalizedNet(AbstractExtendedNet):
 					}
 			self.add_outputs.append("original nested feature stats: {}".format(atts))
 
-		normalized_features = self._linearize_features_(normalized_features)
-		if self.include_original:
-			normalized_output = nested_output.unsqueeze(1).transpose(-2, -1).matmul(nested_probs.unsqueeze(1)).view(-1, self.num_classes**2)
+		# we don't need the normalized output anymore, as we pass it through a softmax function. Since the new outputs will also go through the softmax, this will achieve
+		# the "normalization" we require to combine the new outputs (i.e: class "values" - converted to probs through softmax) with the old outputs
+		# normalized_output = nested_output.unsqueeze(1).transpose(-2, -1).matmul(nested_probs.unsqueeze(1)).view(-1, self.num_classes**2)
+
+		# if self.include_original:
+		if False:
+			"""
+			This if was supposed to combine the outputs from the original network with the new features in this network in the first fc layer
+			I decided against this in favor of just combining the OUTPUT of the first layer with the outputs of the original network
+			This approach would have required a lot of technical provisions to make it work properly, as the number of features vastly differs from the number of outputs (i.e: number of classes)
+			"""
 			normalized_features = normalized_features / self.num_features()
 			normalized_output = normalized_output / self.num_classes
 			self.save_output_values(normalized_features, normalized_output)
 			normalized_features = torch.cat((normalized_features, normalized_output), 1)
 
+		# TODO FIGURE OUT WHAT'S WRONG WITH THE SIZE MISMATCH
+		s = self.nested_model.features.size
+		print("{} *= {} ?=N {} ?=O {}".format(self.nested_model.features.size(), s(1)*s(2)*s(3)*self.num_classes, normalized_features.size(), self.num_features()*self.num_classes))
 		output = self.fc1(normalized_features)
 
-		output, nested_output = self.nonlinear(output), self.nonlinear(nested_output)
-		output = self.fc2(torch.cat((output, nested_output), 1))
+		output, nested_output = self.softmax(output), self.softmax(nested_output)
+
+		if self.include_original:
+			output = torch.cat((output, nested_output), 1)
+
+		output = self.fc2(output)
 
 		# self.normalizeds, self.normals = output, nested_output
 
