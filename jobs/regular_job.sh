@@ -9,5 +9,5 @@
 # %x is the job name
 
 source startup.sh
-python model.py -e ${NUM_EPOCHS:-50} -d '../datasets' -a -m ${SLURM_JOB_NAME}.model  -l ${MODEL_NAME:-'outputs/regular.model'} ${RUN_FLAGS:-''}
+python model.py -e 120 -d '../datasets' -a -m regular.model
 
