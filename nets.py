@@ -47,6 +47,7 @@ class AbstractExtendedNet(nn.Module):
 
 		self.outputs = None
 		self.add_outputs = []
+		self.super_verbose = False
 		self._init_layers()
 
 	def num_features(self):
@@ -157,13 +158,13 @@ class FCNormalizedNet(AbstractExtendedNet):
 			self.save_output_values(normalized_features, normalized_output)
 			normalized_features = torch.cat((normalized_features, normalized_output), 1)
 
-		# TODO FIGURE OUT WHAT'S WRONG WITH THE SIZE MISMATCH
-		s = self.nested_model.features.size
-		print("{} *= {} ?=N {} ?=O {}".format(self.nested_model.features.size(), s(1)*s(2)*s(3)*self.num_classes, normalized_features.size(), self.num_features()*self.num_classes))
-		output = self.fc1(normalized_features)
+
+		output = self.fc1(self._linearize_features_(normalized_features))
 
 		output, nested_output = self.softmax(output), self.softmax(nested_output)
 
+		if self.super_verbose:
+			print("{}\n************\n{}\n--------------", output[0:9], nested_output[0:9])
 		if self.include_original:
 			output = torch.cat((output, nested_output), 1)
 

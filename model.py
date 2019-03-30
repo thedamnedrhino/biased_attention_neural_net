@@ -132,13 +132,14 @@ class SimpleNet(nn.Module):
 		return output
 
 class NetworkManager:
-	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, extended_net_args={}, train_on_validation=False):
+	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, extended_net_args={}, train_on_validation=False, super_verbose=False):
 		"""
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
 		validation_labels_file: file name to save the validation labels under - only if validate_only=True
 		checkpoint_file_name: name of the file to load a checkpoint from, falsey for no checkpoint
 		extended_net: name of the extended network, choose from ['reg', 'fcN', 'featNRO_(1)', featNPO_(1)'] where (1) is one of ['R', 'S', 'Th']. Pass falsey for non-extended net.
 		extended_checkpoint: checkpoint will be loaded into the extended network instead of the simple network - only in effect with extended_net != False
+		super_verbose: False or float. if float, super verbosity will be toggled on when validation acc is above that threshold. If False, super verbosity will be off.(see self.model.super_verbose)
 		"""
 
 		self.batch_size = batch_size
@@ -146,6 +147,7 @@ class NetworkManager:
 		self.datadir = datadir
 		self.train_on_validation = train_on_validation
 		self.augment = augment
+		self.super_verbose = super_verbose
 
 		#Create model, optimizer and loss function
 		self.model = self.create_model(hidden_channels, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
@@ -209,6 +211,7 @@ class NetworkManager:
 
 		best_acc = 0.0
 		for epoch in range(num_epochs):
+			self.toggle_super_verbosity(best_acc)
 			model.train()
 			train_acc = 0.0
 			train_loss = 0.0
@@ -381,6 +384,12 @@ class NetworkManager:
 
 		self.learning_rate = lr
 
+	def toggle_super_verbosity(self, best_validation_acc):
+		if self.super_verbose is False:
+			self.model.super_verbose = False
+		elif best_validation_acc >= self.super_verbose:
+			self.model.super_verbose = True
+
 
 if __name__ == "__main__":
 	import argparse
@@ -405,6 +414,7 @@ if __name__ == "__main__":
 	optparser.add_argument("--net-args", dest="netargs", nargs="+", default=[], help="the arguments passed to the extended network. Check the documentation for options of each network. only in effect with -x")
 	optparser.add_argument("-r", "--learning-rate", type=float, dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
 	optparser.add_argument("--unfreeze-all", default=False, action="store_true", dest="unfreezeall", help="whether to unfreeze all layers in the base network (only with -x)")
+	optparser.add_argument("--super-verbose", dest="superverbose", nargs="?", default=False, const=0.0,  help="whether to be super verbose. Optionally supply a value to start super verbosity when validation accuracy is above that value.")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -424,6 +434,7 @@ if __name__ == "__main__":
 	unfreeze_basefc = opts.unfreezefc
 	nonlinear = opts.nonlinear
 	network = opts.network
+	super_verbose = opts.superverbose if opts.superverbose is False else float(opts.superverbose)
 	learning_rate = LEARNING_RATE
 	static_learning_rate = STATIC_LEARNING_RATE
 	if opts.learningrate is not False:
@@ -451,7 +462,8 @@ if __name__ == "__main__":
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
 
-	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args, train_on_validation=merge_validation)
+	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args,
+			train_on_validation=merge_validation, super_verbose=super_verbose)
 
 	if not validate_only and not test_only:
 		net_man.train(epochs, opts.modelfilename)
