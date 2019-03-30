@@ -111,7 +111,8 @@ class RegularExtendedNet(AbstractExtendedNet):
 		# nested_features = self._linearize_features_(nested_features)
 		nested_features, nested_output = nested_features/self.num_features(), nested_output/self.num_classes
 		extended_features = torch.cat((nested_output, nested_features), 1)
-		self.save_output_values(nested_features, nested_output)
+		if self.super_verbose:
+			self.save_output_values(nested_features, nested_output)
 		output = self.fc1(extended_features)
 		output = self.nonlinear(output)
 		nested_output = self.nonlinear(nested_output)
@@ -155,7 +156,8 @@ class FCNormalizedNet(AbstractExtendedNet):
 			"""
 			normalized_features = normalized_features / self.num_features()
 			normalized_output = normalized_output / self.num_classes
-			self.save_output_values(normalized_features, normalized_output)
+			if self.super_verbose:
+				self.save_output_values(normalized_features, normalized_output)
 			normalized_features = torch.cat((normalized_features, normalized_output), 1)
 
 

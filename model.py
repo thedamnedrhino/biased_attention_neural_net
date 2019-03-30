@@ -148,6 +148,7 @@ class NetworkManager:
 		self.train_on_validation = train_on_validation
 		self.augment = augment
 		self.super_verbose = super_verbose
+		self.toggle_super_verbosity(0)
 
 		#Create model, optimizer and loss function
 		self.model = self.create_model(hidden_channels, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
@@ -212,6 +213,7 @@ class NetworkManager:
 		best_acc = 0.0
 		for epoch in range(num_epochs):
 			self.toggle_super_verbosity(best_acc)
+			model.super_verbose = self.is_super_verbose
 			model.train()
 			train_acc = 0.0
 			train_loss = 0.0
@@ -237,7 +239,8 @@ class NetworkManager:
 				_, prediction = torch.max(outputs.data, 1)
 				train_acc += torch.sum(prediction == labels.data).float()
 
-			model.print_outputs()
+			if self.is_super_verbose:
+				model.print_outputs()
 
 			#Call the learning rate adjustment function
 			self.adjust_learning_rate(epoch)
@@ -386,9 +389,10 @@ class NetworkManager:
 
 	def toggle_super_verbosity(self, best_validation_acc):
 		if self.super_verbose is False:
-			self.model.super_verbose = False
-		elif best_validation_acc >= self.super_verbose:
-			self.model.super_verbose = True
+			self.is_super_verbose = False
+		elif self.super_verbose is True or best_validation_acc >= self.super_verbose:
+			self.is_super_verbose = True
+
 
 
 if __name__ == "__main__":
