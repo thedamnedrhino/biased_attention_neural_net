@@ -48,6 +48,8 @@ class AbstractExtendedNet(nn.Module):
 		self.outputs = None
 		self.add_outputs = []
 		self.super_verbose = False
+		# each network will have their own metric
+		self.metrics = None
 		self._init_layers()
 
 	def num_features(self):
@@ -122,6 +124,7 @@ class RegularExtendedNet(AbstractExtendedNet):
 class FCNormalizedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
+		self.metrics = FCNormalizedNet.Metrics(self)
 		# all the features plus the class probability for each class go in
 		# self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + int(self.include_original)*self.num_classes**2, out_features=self.num_classes)
 		# I decided against the above, because combining feature maps, with class values (i.e: result of passing maps through an FC) is hard see notes in self._process()
@@ -165,8 +168,7 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		output, nested_output = self.softmax(output), self.softmax(nested_output)
 
-		if self.super_verbose:
-			print("{}\n************\n{}\n--------------", output[0:9], nested_output[0:9])
+		self.metrics.batch_run(output, nested_output)
 		if self.include_original:
 			output = torch.cat((output, nested_output), 1)
 
@@ -175,6 +177,47 @@ class FCNormalizedNet(AbstractExtendedNet):
 		# self.normalizeds, self.normals = output, nested_output
 
 		return output
+
+	def reset_metrics(self):
+		self.metrics.reset()
+
+	class Metrics:
+		def __init__(self, fcnet):
+			self.fcnet = fcnet
+			self.reset()
+		def reset(self):
+			self.batch_data = []
+			self.diff_avg = None
+			self.relative_diff_avg = None
+			self.contradiction_avg = None
+
+		def __add_batch_data(self, diff_avg, relative_diff_avg, contradiction_avg):
+			self.batch_data.append((diff_avg, relative_diff_avg, contradiction_avg))
+
+		def batch_run(self, output, nested_output):
+			sms = (self.fcnet.softmax(output), self.fcnet.softmax(nested_output))
+			diff = torch.abs(sms[0] - sms[1])
+			relative_diff = diff/sms[0]
+			diff, relative_diff = torch.sum(diff).item(), torch.sum(relative_diff).item()
+			ls = (torch.argmax(output, 1), torch.argmax(nested_output, 1))
+			contradictions = torch.sum(ls[0] != ls[1]).item()
+			batch_size = output.size(0)
+			diff_avg, relative_diff_avg, contradiction_avg = diff/batch_size, relative_diff/batch_size, contradictions/batch_size
+			self.__add_batch_data(diff_avg, relative_diff_avg, contradiction_avg)
+
+		def aggregate(self):
+			aggregated = [0.0, 0.0, 0.0]
+			for d in self.batch_data:
+				for i, v in enumerate(d):
+					aggregated[i] += v
+
+			for i in range(len(aggregated)):
+				aggregated[i] /= len(self.batch_data)
+
+			self.diff_avg = aggregated[0]
+			self.relative_diff_avg = aggregated[1]
+			self.contradiction_avg = aggregated[2]
+
 
 class FeatureNormalizedNet(AbstractExtendedNet):
 
