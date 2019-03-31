@@ -243,7 +243,7 @@ class NetworkManager:
 				model.print_outputs()
 				if model.metrics is not None:
 					model.metrics.aggregate()
-					print("Diff_avg: {}, Relative_diff_avg: {}, Contradiction_avg: {}".format(model.metrics.diff_avg, model.metrics.relative_diff_avg, model.metrics.contradiction_avg))
+					print("\n+++++++++++++++++++\nDiff_avg: {}, Relative_diff_avg: {}, Contradiction_avg: {}\n".format(model.metrics.diff_avg, model.metrics.relative_diff_avg, model.metrics.contradiction_avg))
 					model.reset_metrics()
 
 			#Call the learning rate adjustment function
