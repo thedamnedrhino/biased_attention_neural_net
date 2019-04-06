@@ -5,6 +5,7 @@ from torchvision.transforms import transforms
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.autograd import Variable
+import CustomizedLinear.CustomizedLinear
 import numpy as np
 
 import optparse
@@ -131,8 +132,38 @@ class SimpleNet(nn.Module):
 		output = self.fc(output)
 		return output
 
+class SimpleNet_TwoFC(SimpleNet):
+	def __init__(self, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32):
+		super(SimpleNet_TwoFC, self).__init__(num_classes, in_channels, hidden_channels, height, width)
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
+		self.fc2 = nn.Linear(in_features=self.num_classes**2, out_features=self.num_classes)
+		# replace the original fully conected layer in the parent class with a sequential of the above two FCs
+		self.fc = nn.Sequential(self.fc1, self.fc2)
+
+class SimpleNet_ClassDifferentiatedFC(SimpleNet):
+	def __init__(self, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32):
+		super(SimpleNet_ClassDifferentiatedFC, self).__init__(num_classes, in_channels, hidden_channels, height, width)
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
+		mask = self.create_class_differentiated_connection_mask()
+		self.fc2 = CustomizedLinear.CustomizedLinear.CustomizedLinear(mask)
+		self.fc = nn.Sequential(self.fc1, self.fc2)
+
+	def create_class_differentiated_connection_mask(self):
+		mask = [[0 for x in range(self.num_classes)] for y in range(self.num_classes**2)]
+		for i in range(self.num_classes**2):
+			for j in range(self.num_classes):
+				if j == i / self.num_classes or j == i % self.num_classes:
+					mask[i][j] = 1
+		return torch.tensor(mask)
+
 class NetworkManager:
-	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, extended_net_args={}, train_on_validation=False, super_verbose=False):
+	BASE_NET_MAP = {
+		'simple': SimpleNet,
+		'two_fc': SimpleNet_TwoFC,
+		'diff_fc': SimpleNet_ClassDifferentiatedFC
+		}
+	BASE_NETS = list(BASE_NET_MAP.keys())
+	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, extended_net_args={}, train_on_validation=False, super_verbose=False):
 		"""
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
 		validation_labels_file: file name to save the validation labels under - only if validate_only=True
@@ -151,7 +182,7 @@ class NetworkManager:
 		self.toggle_super_verbosity(0)
 
 		#Create model, optimizer and loss function
-		self.model = self.create_model(hidden_channels, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
+		self.model = self.create_model(hidden_channels, base_net, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args,
 				checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=None)
 
 		#Check if gpu support is available
@@ -166,8 +197,8 @@ class NetworkManager:
 		self.optimizer = Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0001)
 		self.loss_fn = nn.CrossEntropyLoss()
 
-	def create_model(self, hidden_channels, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None):
-		model = SimpleNet(hidden_channels=hidden_channels)
+	def create_model(self, hidden_channels, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None):
+		model = self.create_base_model(hidden_channels=hidden_channels, net_name=base_net)
 		if load_saved and not extended_checkpoint:
 			self.load_checkpoint(model, checkpoint_file_name)
 
@@ -189,6 +220,10 @@ class NetworkManager:
 				self.load_checkpoint(model, checkpoint_file_name)
 
 		return model
+
+	def create_base_model(self, hidden_channels, net_name):
+		net_class = type(self).BASE_NET_MAP[net_name]
+		return net_class(hidden_channels=hidden_channels)
 
 	def __init(self, set):
 		if set == 'train':
@@ -423,6 +458,7 @@ if __name__ == "__main__":
 	optparser.add_argument("-r", "--learning-rate", type=float, dest="learningrate", default=False, help="the static learning rate. defaults to a dynamic one starting at 0.001 and divided by 10 every 30 epochs")
 	optparser.add_argument("--unfreeze-all", default=False, action="store_true", dest="unfreezeall", help="whether to unfreeze all layers in the base network (only with -x)")
 	optparser.add_argument("--super-verbose", dest="superverbose", nargs="?", default=False, const=0.0,  help="whether to be super verbose. Optionally supply a value to start super verbosity when validation accuracy is above that value.")
+	optparser.add_argument("--base-net", default="simple", dest='basenet', choices=NetworkManager.BASE_NETS, help="which base net to use. Choose from [{}]".format(', '.join(NetworkManager.BASE_NETS)))
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -470,7 +506,7 @@ if __name__ == "__main__":
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
 
-	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args,
+	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args,
 			train_on_validation=merge_validation, super_verbose=super_verbose)
 
 	if not validate_only and not test_only:
