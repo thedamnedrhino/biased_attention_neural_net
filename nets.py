@@ -105,11 +105,28 @@ class AbstractExtendedNet(nn.Module):
 		self.outputs += "old - size: {}, sum: {}, ^2sum: {}, ^2max: {}, ^2_mean: {}\n".format(old_output.size(), outputs['old_output_sum'], outputs['old_output^2_sum'], outputs['old_output^2_max'], outputs['old_output^2_mean'])
 		self.outputs += ("\n").join(["{}".format(e) for e in self.add_outputs])
 
+
+	def _reguralize_layer(self, layer, loss):
+		if not self.regularize:
+			return loss
+		# loss is mutable so we can only keep it this way
+		old_loss = loss.item()
+		# regularize parameters in fc1 to selectively choose features
+		loss = self._add_regularization(layer, loss)
+		new_loss = loss.item()
+		if self.super_verbose:
+			diff = new_loss - old_loss
+			print("{} - {} = {} = {}% * {}".format(new_loss, old_loss, diff, diff/old_loss * 100, old_loss))
+		return loss
+
 	def _add_regularization(self, layer, loss):
 		l2 = 0
-		for p in self.fc1.parameters():
+		count = 0
+		for p in layer.parameters():
 			l2 += (p**2).sum()
-		loss += l2 / self.regularization_rate
+			count += 1
+		l2 /= count
+		loss += l2 * self.regularization_rate
 		return loss
 
 	def loss_hook(self, loss):
@@ -136,10 +153,7 @@ class RegularExtendedNet(AbstractExtendedNet):
 		return output
 
 	def loss_hook(self, loss):
-		if not self.regularize:
-			return loss
-		# regularize parameters in fc1 to selectively choose features
-		return self._add_regularization(self.fc1, loss)
+		self._reguralize_layer(self.fc1, loss)
 
 class FCNormalizedNet(AbstractExtendedNet):
 
@@ -199,12 +213,19 @@ class FCNormalizedNet(AbstractExtendedNet):
 		return output
 
 	def loss_hook(self, loss):
+		self._reguralize_layer(self.fc1, loss)
+
+	def _reguralize_layer(self, layer, loss):
 		if not self.regularize:
 			return loss
+		# loss is mutable so we can only keep it this way
+		old_loss = loss.item()
 		# regularize parameters in fc1 to selectively choose features
-		new_loss = self._add_regularization(self.fc1, loss)
+		loss = self._add_regularization(self.fc1, loss)
+		new_loss = loss.item()
 		if self.super_verbose:
-			print("{} - {} = {}".format(new_loss.item(), loss.item(), new_loss.item() - loss.item()))
+			diff = new_loss - old_loss
+			print("{} - {} = {} = {}% * {}".format(new_loss, old_loss, diff, diff/old_loss * 100, old_loss))
 		return loss
 
 	def reset_metrics(self):
