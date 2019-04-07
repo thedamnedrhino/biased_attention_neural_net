@@ -3,6 +3,44 @@ import torch.nn as nn
 
 
 
+class Regularizer:
+	TYPES = ('l1', 'l2', 'l1/2')
+	def l1(self, p):
+		return p.sum()
+	def l2(self, p):
+		return (p**2).sum()
+	def l1over2(self, p):
+		return torch.sqrt(torch.abs(p)).sum()
+
+	def __init__(self, reg_type, reg_rate):
+		assert reg_type in type(self).TYPES
+		self.reg_type = reg_type
+		self.reg_rate = reg_rate
+		parameter_wise_callback_map = {
+				'l1': self.parameter_wise_reg_callback(self.l1),
+				'l2': self.parameter_wise_reg_callback(self.l2),
+				'l1/2': self.parameter_wise_reg_callback(self.l1over2),
+				}
+		if self.reg_type in parameter_wise_callback_map:
+			self.reg = parameter_wise_callback_map[self.reg_type]
+		else:
+			raise Exception('don\'t have this regularization type: "%s"' % self.reg_type)
+
+	def regularize(self, layer, loss):
+		loss += self.reg(layer)
+		return loss
+
+	def parameter_wise_reg_callback(self, parameter_fn):
+		def callback(layer):
+			count = 0
+			total = 0
+			for p in layer.parameters():
+				total += parameter_fn(p)
+				count += 1
+			return total/count * self.reg_rate
+		return callback
+
+
 class ExtendedNetFactory:
 	NETS = {'reg': 'regular', 'fcN': 'Fully Connected Layer Normalized', 'featNRO_R': 'Features normalized with normalizers generated from raw output with no non-linear after' ,'featNRO_S': 'Features normalized with normalizers generated from raw output with a tanh after', 'featNRO_Th': 'Features normalized with normalizers generated from raw output with a tanh after' , 'featNPO_R': 'Features normalized with normalizers generated from probability output with no non-linear after', 'featNPO_S': 'Features normalized with normalizers generated from probability output with a sigmoid after', 'featNPO_Th': 'Features normalized with normalizers generated from probability output with a tanh after'}
 
@@ -24,7 +62,7 @@ class ExtendedNetFactory:
 
 
 class AbstractExtendedNet(nn.Module):
-	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, **kwargs):
+	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, regularization_type='l2', **kwargs):
 		super(AbstractExtendedNet, self).__init__()
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
@@ -42,9 +80,10 @@ class AbstractExtendedNet(nn.Module):
 		self.fc_class_correlate = nn.Linear(in_features=self.num_classes, out_features=self.num_classes)
 		self.enable_fc_class_correlate = enable_fc_class_correlate
 		self.include_original = include_original
-		self.regularization_rate = float(regularization_rate) if regularization_rate is not None else 0
-		self.regularize = self.regularization_rate != 0
-		print(self.regularize)
+		regularization_rate = float(regularization_rate) if regularization_rate is not None else 0
+		self.regularize = bool(regularization_rate)
+		if self.regularize:
+			self.regularizer = Regularizer(regularization_type, regularization_rate)
 		for k, v in kwargs:
 			raise Exception('what are these argument %s, this is is\'nt supposed to happen!' % (kwargs.items()))
 
@@ -120,6 +159,7 @@ class AbstractExtendedNet(nn.Module):
 		return loss
 
 	def _add_regularization(self, layer, loss):
+		return self.regularizer.regularize(layer, loss)
 		l2 = 0
 		count = 0
 		for p in layer.parameters():
@@ -153,7 +193,7 @@ class RegularExtendedNet(AbstractExtendedNet):
 		return output
 
 	def loss_hook(self, loss):
-		self._reguralize_layer(self.fc1, loss)
+		return self._reguralize_layer(self.fc1, loss)
 
 class FCNormalizedNet(AbstractExtendedNet):
 
@@ -213,20 +253,7 @@ class FCNormalizedNet(AbstractExtendedNet):
 		return output
 
 	def loss_hook(self, loss):
-		self._reguralize_layer(self.fc1, loss)
-
-	def _reguralize_layer(self, layer, loss):
-		if not self.regularize:
-			return loss
-		# loss is mutable so we can only keep it this way
-		old_loss = loss.item()
-		# regularize parameters in fc1 to selectively choose features
-		loss = self._add_regularization(self.fc1, loss)
-		new_loss = loss.item()
-		if self.super_verbose:
-			diff = new_loss - old_loss
-			print("{} - {} = {} = {}% * {}".format(new_loss, old_loss, diff, diff/old_loss * 100, old_loss))
-		return loss
+		return self._reguralize_layer(self.fc1, loss)
 
 	def reset_metrics(self):
 		self.metrics.reset()
