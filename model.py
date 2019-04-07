@@ -81,7 +81,6 @@ class SimpleNet(nn.Module):
 		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'softmax': self.softmax, 'none': nn.Sequential()}
 		assert nonlinear in nonlinearmap or nonlinear is None
 		self.nonlinear = nonlinearmap[nonlinear] if nonlinear is not None else lambda x: x
-		print(nonlinear)
 		self.unit1 = Unit(in_channels=in_channels,out_channels=channels)
 		self.unit2 = Unit(in_channels=channels, out_channels=channels)
 		self.pool1 = nn.MaxPool2d(kernel_size=2)
