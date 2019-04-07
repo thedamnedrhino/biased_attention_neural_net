@@ -1,3 +1,5 @@
+import random
+
 import torch
 import torch.nn as nn
 
@@ -6,11 +8,11 @@ import torch.nn as nn
 class Regularizer:
 	TYPES = ('l1', 'l2', 'l1/2')
 	def l1(self, p):
-		return p.sum()
+		return p.abs().sum()
 	def l2(self, p):
 		return (p**2).sum()
 	def l1over2(self, p):
-		return torch.sqrt(torch.abs(p)).sum()
+		return torch.sqrt(p.abs()).sum()
 
 	def __init__(self, reg_type, reg_rate):
 		assert reg_type in type(self).TYPES
@@ -90,9 +92,11 @@ class AbstractExtendedNet(nn.Module):
 
 		self.outputs = None
 		self.add_outputs = []
+		# super verbosity is toggled from outside based on the validation accuracy. But we should fix this line regardless.
 		self.super_verbose = False
 		# each network will have their own metric
 		self.metrics = None
+		self.reset_reg_diffs()
 		self._init_layers()
 
 	def num_features(self):
@@ -153,9 +157,13 @@ class AbstractExtendedNet(nn.Module):
 		# regularize parameters in fc1 to selectively choose features
 		loss = self._add_regularization(layer, loss)
 		new_loss = loss.item()
+		diff = new_loss - old_loss
 		if self.super_verbose:
-			diff = new_loss - old_loss
-			print("{} - {} = {} = {}% * {}".format(new_loss, old_loss, diff, diff/old_loss * 100, old_loss))
+			# print("{} - {} = {} = {}% * {}".format(new_loss, old_loss, diff, diff/old_loss * 100, old_loss))
+		# else:
+			# save output every 10 batches - we don't want to keep too much data: (5 can be any other number in [0, 10])
+			self.reg_diffs[0].append(diff)
+			self.reg_diffs[1].append(diff/old_loss)
 		return loss
 
 	def _add_regularization(self, layer, loss):
@@ -171,6 +179,12 @@ class AbstractExtendedNet(nn.Module):
 
 	def loss_hook(self, loss):
 		return loss
+
+	def reset_reg_diffs(self):
+		"""
+		To log regularization... very badly put down, I know.
+		"""
+		self.reg_diffs = [[], []]
 
 class RegularExtendedNet(AbstractExtendedNet):
 
