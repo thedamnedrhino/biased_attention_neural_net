@@ -287,9 +287,27 @@ class NetworkManager:
 			if self.is_super_verbose:
 				model.print_outputs()
 				if model.metrics is not None:
+					model.reset_metrics() # just keep this to not be overwhelmed by the saved data
+					"""
+					the differences between values of the prior values
+					and the "new" values have no meaning at this point
+
 					model.metrics.aggregate()
+
 					print("\n+++++++++++++++++++\nDiff_avg: {}, Relative_diff_avg: {}, Contradiction_avg: {}\n".format(model.metrics.diff_avg, model.metrics.relative_diff_avg, model.metrics.contradiction_avg))
 					model.reset_metrics()
+					"""
+				# if model.reg_diffs: changed to the below
+				if model.reg_diffs[0]: # reg_diffs is a list of two lists of the same size
+					diffs, rel_diffs = model.reg_diffs
+					print(len(diffs))
+					min_diff, min_rel_diff = min(diffs), min(rel_diffs)
+					max_diff, max_rel_diff = max(diffs), max(rel_diffs)
+					mean_diff, mean_rel_diff = np.mean(diffs), np.mean(rel_diffs)
+					model.reset_reg_diffs()
+					print("REGULARIZATION STATS:")
+					print("(Min Diff, Rel Diff), (Max Diff, Rel Diff), (Average Diff, Rel Diff): (%s, %s), (%s, %s), (%s, %s)" % (min_diff, min_rel_diff, max_diff, max_rel_diff, mean_diff, mean_rel_diff))
+					print("")
 
 			#Call the learning rate adjustment function
 			self.adjust_learning_rate(epoch)
