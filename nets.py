@@ -24,7 +24,7 @@ class ExtendedNetFactory:
 
 
 class AbstractExtendedNet(nn.Module):
-	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, **kwargs):
+	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, **kwargs):
 		super(AbstractExtendedNet, self).__init__()
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
@@ -42,6 +42,9 @@ class AbstractExtendedNet(nn.Module):
 		self.fc_class_correlate = nn.Linear(in_features=self.num_classes, out_features=self.num_classes)
 		self.enable_fc_class_correlate = enable_fc_class_correlate
 		self.include_original = include_original
+		self.regularization_rate = float(regularization_rate)
+		self.regularize = self.regularization_rate != 0
+		print(self.regularize)
 		for k, v in kwargs:
 			self.__set_attr__(k, v)
 
@@ -101,6 +104,16 @@ class AbstractExtendedNet(nn.Module):
 		self.outputs += "old - size: {}, sum: {}, ^2sum: {}, ^2max: {}, ^2_mean: {}\n".format(old_output.size(), outputs['old_output_sum'], outputs['old_output^2_sum'], outputs['old_output^2_max'], outputs['old_output^2_mean'])
 		self.outputs += ("\n").join(["{}".format(e) for e in self.add_outputs])
 
+	def _add_regularization(self, layer, loss):
+		l2 = 0
+		for p in self.fc1.parameters():
+			l2 += (p**2).sum()
+		loss += l2 / self.regularization_rate
+		return loss
+
+	def loss_hook(self, loss):
+		return loss
+
 class RegularExtendedNet(AbstractExtendedNet):
 
 	def _init_layers(self):
@@ -120,6 +133,12 @@ class RegularExtendedNet(AbstractExtendedNet):
 		nested_output = self.nonlinear(nested_output)
 		output = self.fc2(torch.cat((output, nested_output), 1))
 		return output
+
+	def loss_hook(self, loss):
+		if not self.regularize:
+			return loss
+		# regularize parameters in fc1 to selectively choose features
+		return self._add_regularization(self.fc1, loss)
 
 class FCNormalizedNet(AbstractExtendedNet):
 
@@ -177,6 +196,15 @@ class FCNormalizedNet(AbstractExtendedNet):
 		# self.normalizeds, self.normals = output, nested_output
 
 		return output
+
+	def loss_hook(self, loss):
+		if not self.regularize:
+			return loss
+		# regularize parameters in fc1 to selectively choose features
+		new_loss = self._add_regularization(self.fc1, loss)
+		if self.super_verbose:
+			print("{} - {} = {}".format(new_loss.item(), loss.item(), new_loss.item() - loss.item()))
+		return loss
 
 	def reset_metrics(self):
 		self.metrics.reset()
