@@ -42,11 +42,12 @@ class AbstractExtendedNet(nn.Module):
 		self.fc_class_correlate = nn.Linear(in_features=self.num_classes, out_features=self.num_classes)
 		self.enable_fc_class_correlate = enable_fc_class_correlate
 		self.include_original = include_original
-		self.regularization_rate = float(regularization_rate)
+		self.regularization_rate = float(regularization_rate) if regularization_rate is not None else 0
 		self.regularize = self.regularization_rate != 0
 		print(self.regularize)
 		for k, v in kwargs:
-			self.__set_attr__(k, v)
+			raise Exception('what are these argument %s, this is is\'nt supposed to happen!' % (kwargs.items()))
+
 
 		self.outputs = None
 		self.add_outputs = []
