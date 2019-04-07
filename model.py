@@ -123,6 +123,9 @@ class SimpleNet(nn.Module):
 		self.net = nn.Sequential(self.unit1, self.unit2, self.pool1, self.unit3, self.unit4, self.avgpool)
 		self.fc = nn.Linear(in_features=self.num_features(),out_features=num_classes)
 
+	def loss_hook(self, loss):
+		return loss
+
 	def num_features(self):
 		denom = 1
 
@@ -173,8 +176,9 @@ class NetworkManager:
 		'diff_fc': SimpleNet_ClassDifferentiatedFC
 		}
 	BASE_NETS = list(BASE_NET_MAP.keys())
-	def __init__(self, batch_size=BATCH_SIZE, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu', extended_net_args={}, train_on_validation=False, super_verbose=False):
+	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu', extended_net_args={}, train_on_validation=False, super_verbose=False):
 		"""
+		limit: limit the size of the dataset
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
 		validation_labels_file: file name to save the validation labels under - only if validate_only=True
 		checkpoint_file_name: name of the file to load a checkpoint from, falsey for no checkpoint
@@ -183,6 +187,7 @@ class NetworkManager:
 		super_verbose: False or float. if float, super verbosity will be toggled on when validation acc is above that threshold. If False, super verbosity will be off.(see self.model.super_verbose)
 		"""
 		self.batch_size = batch_size
+		self.limit = limit
 		self.train_transformers = train_transformers
 		self.datadir = datadir
 		self.train_on_validation = train_on_validation
@@ -231,14 +236,14 @@ class NetworkManager:
 
 	def __init(self, set):
 		if set == 'train':
-			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers)
+			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers, limit=self.limit)
 		elif set == 'validate':
 			if not self.train_on_validation:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, shuffle=False, transformers=[])
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, shuffle=False, transformers=[], limit=self.limit)
 			else:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, shuffle=True, transformers=train_transformers)
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, shuffle=True, transformers=train_transformers, limit=self.limit)
 		elif set == 'test':
-			self.test_loader = dataset.create_testloader(self.datadir)
+			self.test_loader = dataset.create_testloader(self.datadir, limit=self.limit)
 
 
 	def train(self, num_epochs, save_model_file_name):
@@ -268,6 +273,8 @@ class NetworkManager:
 				outputs = model(images)
 				#Compute the loss based on the predictions and actual labels
 				loss = loss_fn(outputs,labels)
+				# give the model a chance to modify the loss - used for regularization e.g
+				model.loss_hook(loss)
 				#Backpropagate the loss
 				loss.backward()
 
@@ -333,6 +340,9 @@ class NetworkManager:
 				outputs = model(images)
 				#Compute the loss based on the predictions and actual labels
 				loss = loss_fn(outputs,labels)
+
+				model.loss_hook(loss)
+
 				#Backpropagate the loss
 				loss.backward()
 
@@ -442,6 +452,7 @@ if __name__ == "__main__":
 	import argparse
 	optparser = argparse.ArgumentParser()
 	optparser.add_argument("-e", "--num-epochs", dest="epochs", default=10, help="number of epochs to train on")
+	optparser.add_argument("--limit", dest="limit", type=int, default=None, help="limit the size of the dataset")
 	optparser.add_argument("-b", "--batch-size", type=int, dest="batchsize", default=BATCH_SIZE, help="training batch size")
 	optparser.add_argument("-k", "--kernel-size", dest="kernelsize", default=KERNEL_SIZE, help="the kernel size for the convulational filters")
 	optparser.add_argument("-c", "--channels", dest="hiddenchannels", default=HIDDEN_CHANNELS, help="number of channels(filters) in convulational filters")
@@ -509,7 +520,7 @@ if __name__ == "__main__":
 		transformers = []
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
-	net_man = NetworkManager(batch_size, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args,
+	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args,
 			train_on_validation=merge_validation, super_verbose=super_verbose)
 
 	if not validate_only and not test_only:
