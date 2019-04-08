@@ -6,7 +6,7 @@ import torch.nn as nn
 
 
 class Regularizer:
-	TYPES = ('l1', 'l2', 'l1/2')
+	TYPES = ('l1', 'l2', 'l1_2')
 	def l1(self, p):
 		return p.abs().sum()
 	def l2(self, p):
@@ -21,7 +21,7 @@ class Regularizer:
 		parameter_wise_callback_map = {
 				'l1': self.parameter_wise_reg_callback(self.l1),
 				'l2': self.parameter_wise_reg_callback(self.l2),
-				'l1/2': self.parameter_wise_reg_callback(self.l1over2),
+				'l1_2': self.parameter_wise_reg_callback(self.l1over2),
 				}
 		if self.reg_type in parameter_wise_callback_map:
 			self.reg = parameter_wise_callback_map[self.reg_type]
