@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 
-
 class Regularizer:
 	TYPES = ('l1', 'l2', 'l1_2')
 	def l1(self, p):
@@ -312,16 +311,17 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 class FeatureNormalizedNet(AbstractExtendedNet):
 
-	def __init__(self, nested_model, normalization_layer, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True):
-		super(FeatureNormalizedNet, self).__init__(nested_model, nonlinear, fc_include_class_prob, enable_fc_class_correlate)
-		self.normalization_layer = normalization_layer
-		self.final_fc = nn.Linear(in_features=self.num_features(), out_features=self.num_classes)
+	def set_normalization_layer(self, layer):
+		self.normalization_layer = layer
 
 	def _init_layers(self):
-		pass # already done in __init__()
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
+		self.fc2 = nn.Linear(in_features=self.num_classes**2, out_features=self.num_classes)
+		self.final_fc = nn.Sequential(self.fc1, self.fc2)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
+		assert not self.normalization_layer is None, 'The normalization layer must first be set before using this network. use FeatureNormalizedNetFactory to instantiate feature normalized networks'
 		# discard the previous normalized features, we want to normalize the features independently in this net
 		# normalized_features = self.normalize_features(nested_output, nested_probs, nested_features)
 		normalized_features = self.normalization_layer(nested_output, nested_probs, nested_features, normalized_features)
@@ -333,9 +333,14 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 
 		return output
 
+	def loss_hook(self, loss):
+		return self._reguralize_layer(self.fc1, loss)
+
 class FeatureNormalizedNetFactory:
 	def __net(self, nested_model, layer, **net_kwargs):
-		return FeatureNormalizedNet(nested_model, layer, **net_kwargs)
+		net = FeatureNormalizedNet(nested_model, **net_kwargs)
+		net.set_normalization_layer(layer)
+		return net
 
 	def raw_output_raw(self, nested_model, **kwargs):
 		normalization_layer = FeatureNormalizationLayer_RawOutput_Raw(nested_model.num_classes, nested_model.num_features())
