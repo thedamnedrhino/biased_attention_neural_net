@@ -85,7 +85,7 @@ class ExtendedNetFactory:
 
 
 class AbstractExtendedNet(nn.Module):
-	def __init__(self, nested_model, nonlinear='sigmoid', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, regularization_type='l2', **kwargs):
+	def __init__(self, nested_model, nonlinear='relu', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, regularization_type='l2', **kwargs):
 		super(AbstractExtendedNet, self).__init__()
 		self.num_classes = nested_model.num_classes
 		self.hidden_channels = nested_model.hidden_channels
@@ -96,7 +96,7 @@ class AbstractExtendedNet(nn.Module):
 		self.tanh = nn.Tanh()
 		self.relu = nn.ReLU()
 		self.softmax = nn.Softmax()
-		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'softmax': self.softmax, 'none': lambda x: x}
+		nonlinearmap = {'sigmoid': self.sigmoid, 'tanh': self.tanh, 'relu': self.relu, 'softmax': self.softmax, 'none': nn.Sequential()}
 		assert nonlinear in nonlinearmap
 		self.nonlinear = nonlinearmap[nonlinear]
 		self.fc_include_class_prob = fc_include_class_prob
@@ -343,7 +343,7 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 	def _init_layers(self):
 		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
 		self.fc2 = nn.Linear(in_features=self.num_classes**2, out_features=self.num_classes)
-		self.final_fc = nn.Sequential(self.fc1, self.fc2)
+		self.final_fc = nn.Sequential(self.fc1, self.nonlinear, self.fc2)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
