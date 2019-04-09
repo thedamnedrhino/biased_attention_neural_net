@@ -45,7 +45,7 @@ class Parser:
 
 	def get_folder_table(self, folder_name):
 		data = self.sort(self.parse_folder(folder_name))
-		return tabulate.tabulate(data, headers='keys')
+		return tabulate.tabulate(data, headers='keys', showindex=True)
 
 	def sort(self, data_list):
 		return sorted(data_list, key=lambda x: x[self.sort_column])
