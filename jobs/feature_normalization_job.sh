@@ -13,7 +13,7 @@
 NETS=(featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Softmax_g featNRO_Softmax_ch featNPO_Softmax_g featNPO_Softmax_ch)
 NON_LINEARS=(none relu sigmoid tanh)
 FREEZES=('' '--unfreeze-all')
-AUGMENT=('' '-a')
+AUGMENTS=('' '-a')
 
 FREEZE_TEXTS=(freeze unfreeze)
 AUGMENT_TEXTS=(no_augment augment)
