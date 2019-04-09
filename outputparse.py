@@ -4,8 +4,10 @@ import os
 import json
 
 class Parser:
-	def __init__(self, base_folder=''):
+	COLUMNS = ['valid_acc', 'train_acc', 'train_loss']
+	def __init__(self, base_folder='', sort_column='valid_acc'):
 		self.base_folder = base_folder
+		self.sort_column = sort_column
 
 	def _parse_accuracy_line(self, line):
 		parts = line.split()
@@ -18,9 +20,9 @@ class Parser:
 
 		accuracy_dict = json.loads(accuracy_json)
 		return {
-			'validation_accuracy': accuracy_dict['validation_acc'],
-			'training_accuracy': accuracy_dict['train_acc'],
-			'training_loss': accuracy_dict['train_loss']
+			'valid_acc': accuracy_dict['validation_acc'],
+			'train_acc': accuracy_dict['train_acc'],
+			'train_loss': accuracy_dict['train_loss']
 			}
 
 	def _parse_file(self, file_name):
@@ -42,8 +44,11 @@ class Parser:
 		return self._parse_folder(self.resolve_path(folder_name))
 
 	def get_folder_table(self, folder_name):
-		data = self.parse_folder(folder_name)
+		data = self.sort(self.parse_folder(folder_name))
 		return tabulate.tabulate(data, headers='keys')
+
+	def sort(self, data_list):
+		return sorted(data_list, key=lambda x: x[self.sort_column])
 
 	def labelize_file_name(self, file_name):
 		return file_name.replace('.accuracy', '').replace('.model', '')
@@ -61,8 +66,9 @@ if __name__ == '__main__':
 	optparser = argparse.ArgumentParser()
 	optparser.add_argument('path', help="the path to the accuracy file(s)")
 	optparser.add_argument('-f', '--file', dest='file', default=False, action='store_true', help='whether <path> should be interpreted as a file instead of a folder')
+	optparser.add_argument('-s', '--sort-column', dest='sortcolumn', default='valid_acc', choices=Parser.COLUMNS, help='what column to sort the data on')
 	args = optparser.parse_args()
 
-	parser = Parser()
+	parser = Parser(sort_column=args.sortcolumn)
 	print(parser.get_folder_table(args.path))
 
