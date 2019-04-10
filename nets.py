@@ -1,4 +1,5 @@
 import random
+import math
 
 import torch
 import torch.nn as nn
@@ -6,7 +7,7 @@ import torch.nn as nn
 
 class Regularizer:
 	TYPES = ('l1', 'l2', 'l1_2', 'cos')
-	EPSILON=0.00001
+	EPSILON=0.0001
 	ONE=1-EPSILON
 
 	def l1(self, p):
@@ -15,10 +16,32 @@ class Regularizer:
 		return (p**2).sum()
 	def l1over2(self, p):
 		return torch.sqrt(p.abs()).sum()
-	def cos(self, p):
-		tensor = p # call it tensor for the sake of articulacy
-		one = type(self).ONE
-		# find elements that are larger than one
+	def cos(self, p, out_of_norm_reg_type='l2'):
+		"""
+		The entries in p that have absolute value larger than self.cos_threshold(p)
+		are called out_of_norm
+		"""
+		tensor = p
+		# call it tensor for the sake of articulacy
+		# find elements that have norm (abs) larger than one and other wise.
+		# The latter are fed into a function of a cosine for regularization,
+		# and the former will get l2 norms
+		cos_threshold = self.cos_threshold(p)
+		cos_mask, out_of_norm_mask = self.norm_masks(p, cos_threshold)
+		cos_tensor = self.cos_tensor(p, cos_mask)
+		out_of_norm_fn = self.l2 if out_of_norm_reg_type == 'l2' else self.l1
+		out_of_norm_term = out_of_norm_fn(out_of_norm_mask*p)
+		return cos_tensor.sum() + out_of_norm_term
+
+
+	def cos_tensor(self, p, cos_mask=None):
+		if cos_mask is None:
+			cos_mask, _ = self.norm_masks(p, self.cos_threshold(p))
+		cos_term = torch.cos(((p*cos_mask)/self.cos_threshold(p))*(math.pi) - math.pi) + 1
+		return cos_term
+
+	def cos_threshold(self, p):
+		return type(self).ONE
 
 	def norm_masks(self, tensor, norm):
 		"""
