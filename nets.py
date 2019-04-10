@@ -49,17 +49,15 @@ class Regularizer:
 		are 1 and the other ones are zero.
 		Also returns the inverse of the mask where the 1s and zeros are switched.
 		"""
-		tg_mask = self.greater_than_mask(tensor, norm)
-		tl_mask = self.less_than_mask(tensor, -norm)
-		norm_mask = self._norm_mask(tg_mask, tl_mask)
-		inverse_mask = tg_mask + tl_mask
-		return norm_mask, inverse_mask
+		greater_than_norm_mask = self.greater_than_mask(tensor.abs(), norm)
+		norm_mask = (greater_than_norm_mask - 1).neg()
+		return norm_mask, greater_than_norm_mask
 
 	def greater_than_mask(self, tensor, value):
 		return (tensor.clamp(min=value)-value).ceil().clamp(max=1)
 	def less_than_mask(self, tensor, value):
 		return self.greater_than_mask(tensor.neg(), -value)
-	def _norm_mask(self, greater_than_mask, less_than_mask):
+	def _norm_mask(self, greater_than_norm_mask):
 		return ((greater_than_mask + less_than_mask) - 1).neg()
 
 	def __init__(self, reg_type, reg_rate):

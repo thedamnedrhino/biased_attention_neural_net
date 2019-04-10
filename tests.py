@@ -53,5 +53,5 @@ if __name__== '__main__':
 	import sys
 	if len(sys.argv) > 1 and sys.argv[1] == 'all':
 		regularization_mask_test()
-		cos_test()
+		cos_tensor_test()
 	full_cos_reg_test()
