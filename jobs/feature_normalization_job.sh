@@ -10,7 +10,7 @@
 
 # %x is the job name
 
-NETS=(featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Softmax_g featNRO_Softmax_ch featNPO_Softmax_g featNPO_Softmax_ch)
+NETS=(featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Smax_g featNRO_Smax_ch featNPO_Smax_g featNPO_Smax_ch)
 NON_LINEARS=(none relu sigmoid tanh)
 FREEZES=('' '--unfreeze-all')
 AUGMENTS=('' '-a')
