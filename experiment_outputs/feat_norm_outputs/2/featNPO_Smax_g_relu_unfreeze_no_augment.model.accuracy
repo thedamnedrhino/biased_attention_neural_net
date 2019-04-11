@@ -1,0 +1,1 @@
+epoch: 32, accuracy: {'validation_acc': 0.5843333005905151, 'train_acc': 0.5732222199440002, 'train_loss': 0.8008173223601447}

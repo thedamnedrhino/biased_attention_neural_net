@@ -1,0 +1,241 @@
+validation accuracy: 0.4000000059604645
+checkpoint saved
+Epoch 0, Train Accuracy: 0.3216666579246521 , TrainLoss: 1.1294218248791166 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 1, Train Accuracy: 0.40388888120651245 , TrainLoss: 1.058350399547153 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 2, Train Accuracy: 0.4001111090183258 , TrainLoss: 1.0553398149278428 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 3, Train Accuracy: 0.39444443583488464 , TrainLoss: 1.0553080733617146 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 4, Train Accuracy: 0.4017777740955353 , TrainLoss: 1.0552325186199611 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 5, Train Accuracy: 0.40255555510520935 , TrainLoss: 1.0554032302962408 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 6, Train Accuracy: 0.3938888907432556 , TrainLoss: 1.0552538193596734 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 7, Train Accuracy: 0.39855554699897766 , TrainLoss: 1.0557866064707437 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 8, Train Accuracy: 0.39322221279144287 , TrainLoss: 1.0555727346208361 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 9, Train Accuracy: 0.3956666588783264 , TrainLoss: 1.0552021589279175 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 10, Train Accuracy: 0.39811110496520996 , TrainLoss: 1.055145216676924 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 11, Train Accuracy: 0.39633333683013916 , TrainLoss: 1.0552099881702 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 12, Train Accuracy: 0.39811110496520996 , TrainLoss: 1.055451119793786 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 13, Train Accuracy: 0.38688889145851135 , TrainLoss: 1.0552728878657023 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 14, Train Accuracy: 0.39144444465637207 , TrainLoss: 1.0551717166370815 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 15, Train Accuracy: 0.40666666626930237 , TrainLoss: 1.0552118310928345 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 16, Train Accuracy: 0.3973333239555359 , TrainLoss: 1.0557275590896606 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 17, Train Accuracy: 0.3952222168445587 , TrainLoss: 1.0552283788257175 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 18, Train Accuracy: 0.4014444351196289 , TrainLoss: 1.0554083219104342 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 19, Train Accuracy: 0.39855554699897766 , TrainLoss: 1.0552100920147367 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 20, Train Accuracy: 0.39633333683013916 , TrainLoss: 1.0551247164408366 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 21, Train Accuracy: 0.39355555176734924 , TrainLoss: 1.0553263019985624 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 22, Train Accuracy: 0.39988890290260315 , TrainLoss: 1.0551710477405125 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 23, Train Accuracy: 0.39755555987358093 , TrainLoss: 1.055246380382114 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 24, Train Accuracy: 0.38955557346343994 , TrainLoss: 1.0551665632459852 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 25, Train Accuracy: 0.40166667103767395 , TrainLoss: 1.055158164660136 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 26, Train Accuracy: 0.40033334493637085 , TrainLoss: 1.0550758819050259 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 27, Train Accuracy: 0.39944446086883545 , TrainLoss: 1.0554441496531168 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 28, Train Accuracy: 0.3934444487094879 , TrainLoss: 1.0552270929548475 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 29, Train Accuracy: 0.39855554699897766 , TrainLoss: 1.0554553639094035 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 30, Train Accuracy: 0.401888906955719 , TrainLoss: 1.0551734937032065 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 31, Train Accuracy: 0.3928889036178589 , TrainLoss: 1.0554741764068603 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 32, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549928067525227 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 33, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549517004224989 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 34, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945808728536 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 35, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945437113444 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 36, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945350964864 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 37, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945381588406 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 38, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453332689074 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 39, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453694025674 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 40, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453301959568 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 41, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453648461236 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 42, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453404744467 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 43, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453545676337 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 44, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453654819065 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 45, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453552034167 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 46, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453915490044 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 47, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453601837158 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 48, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453310966492 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 49, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453580644395 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 50, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453472561305 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 51, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453672832914 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 52, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453654819065 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 53, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453689787123 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 54, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453380372789 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 55, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945370250278 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 56, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453766081067 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 57, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453678131104 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 58, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453263812596 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 59, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453466203478 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 60, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453619851006 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 61, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453520245022 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 62, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453667534723 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 63, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453483157687 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 64, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453755484688 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 65, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453219307794 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 66, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945365164015 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 67, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453386730618 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 68, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453404214648 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 69, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453721576267 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 70, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453790452745 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 71, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453517066107 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 72, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453557332358 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 73, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453502231174 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 74, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453606075712 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 75, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453770319621 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 76, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945364104377 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 77, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453925026788 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 78, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453493754068 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 79, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453672832914 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 80, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945369720459 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 81, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453546735976 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 82, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453611373902 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 83, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453797870212 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 84, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453733232286 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 85, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453780916003 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 86, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453367657131 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 87, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.05494537141588 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 88, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453739590116 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 89, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453580644395 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 90, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453468322754 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 91, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945352660285 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 92, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453388849894 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 93, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453648991054 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 94, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453637864854 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 95, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945382224189 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 96, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453624619378 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 97, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453324211968 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 98, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453477859496 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 99, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.05494535668691 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 100, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453607135348 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 101, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453484217326 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 102, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453676011826 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 103, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453534020319 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 104, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945340262519 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 105, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453654819065 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 106, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453522364298 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 107, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453457726372 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 108, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945351070828 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 109, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453721576267 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 110, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453633626302 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 111, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453661176893 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 112, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453465143839 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 113, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453459845648 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 114, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.054945361667209 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 115, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453423817952 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 116, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453336927626 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 117, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453710979886 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 118, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453863567777 , validate Accuracy: 0.4000000059604645
+validation accuracy: 0.4000000059604645
+Epoch 119, Train Accuracy: 0.4000000059604645 , TrainLoss: 1.0549453813764784 , validate Accuracy: 0.4000000059604645
