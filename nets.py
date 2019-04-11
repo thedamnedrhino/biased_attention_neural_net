@@ -1,17 +1,64 @@
 import random
+import math
 
 import torch
 import torch.nn as nn
 
 
 class Regularizer:
-	TYPES = ('l1', 'l2', 'l1_2')
+	TYPES = ('l1', 'l2', 'l1_2', 'cos')
+	EPSILON=0.0001
+	ONE=1-EPSILON
+
 	def l1(self, p):
 		return p.abs().sum()
 	def l2(self, p):
 		return (p**2).sum()
 	def l1over2(self, p):
 		return torch.sqrt(p.abs()).sum()
+	def cos(self, p, out_of_norm_reg_type='l2'):
+		"""
+		The entries in p that have absolute value larger than self.cos_threshold(p)
+		are called out_of_norm
+		"""
+		tensor = p
+		# call it tensor for the sake of articulacy
+		# find elements that have norm (abs) larger than one and other wise.
+		# The latter are fed into a function of a cosine for regularization,
+		# and the former will get l2 norms
+		cos_threshold = self.cos_threshold(p)
+		cos_mask, out_of_norm_mask = self.norm_masks(p, cos_threshold)
+		cos_tensor = self.cos_tensor(p, cos_mask)
+		out_of_norm_fn = self.l2 if out_of_norm_reg_type == 'l2' else self.l1
+		out_of_norm_term = out_of_norm_fn(out_of_norm_mask*p)
+		return cos_tensor.sum() + out_of_norm_term
+
+
+	def cos_tensor(self, p, cos_mask=None):
+		if cos_mask is None:
+			cos_mask, _ = self.norm_masks(p, self.cos_threshold(p))
+		cos_term = torch.cos(((p*cos_mask)/self.cos_threshold(p))*(math.pi) - math.pi) + 1
+		return cos_term
+
+	def cos_threshold(self, p):
+		return type(self).ONE
+
+	def norm_masks(self, tensor, norm):
+		"""
+		Returns a mask of tensor, where elements in (-norm, +norm)
+		are 1 and the other ones are zero.
+		Also returns the inverse of the mask where the 1s and zeros are switched.
+		"""
+		greater_than_norm_mask = self.greater_than_mask(tensor.abs(), norm)
+		norm_mask = (greater_than_norm_mask - 1).neg()
+		return norm_mask, greater_than_norm_mask
+
+	def greater_than_mask(self, tensor, value):
+		return (tensor.clamp(min=value)-value).ceil().clamp(max=1)
+	def less_than_mask(self, tensor, value):
+		return self.greater_than_mask(tensor.neg(), -value)
+	def _norm_mask(self, greater_than_norm_mask):
+		return ((greater_than_mask + less_than_mask) - 1).neg()
 
 	def __init__(self, reg_type, reg_rate):
 		assert reg_type in type(self).TYPES
@@ -21,6 +68,7 @@ class Regularizer:
 				'l1': self.parameter_wise_reg_callback(self.l1),
 				'l2': self.parameter_wise_reg_callback(self.l2),
 				'l1_2': self.parameter_wise_reg_callback(self.l1over2),
+				'cos': self.parameter_wise_reg_callback(self.cos)
 				}
 		if self.reg_type in parameter_wise_callback_map:
 			self.reg = parameter_wise_callback_map[self.reg_type]

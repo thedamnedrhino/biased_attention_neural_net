@@ -11,7 +11,7 @@
 # %x is the job name
 
 NETS=(reg fcN)
-TYPES=(l1 l2 l1/2)
+TYPES=(l1 l2 cos)
 RATES=(0.001 0.01 0.1 1 10 100)
 NON_LINEARS=(relu sigmoid tanh)
 
@@ -25,7 +25,7 @@ let NET_INDEX=${JOB_NUM}/3
 
 NET=${NETS[${NET_INDEX}]}
 TYPE=${TYPES[${TYPE_INDEX}]}
-RATE=${RATE[${RATE_INDEX}]}
+RATE=${RATES[${RATE_INDEX}]}
 NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
 
 source startup.sh
