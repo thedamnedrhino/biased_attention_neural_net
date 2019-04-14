@@ -40,11 +40,19 @@ class Parser:
 				results.append(data)
 		return results
 
-	def parse_folder(self, folder_name):
-		return self._parse_folder(self.resolve_path(folder_name))
+	def parse_folder(self, folder_name, sort=True):
+		sort = self.sort if sort else lambda x: x
+		return sort(self._parse_folder(self.resolve_path(folder_name)))
+
+	def parse_folders(self, folder_names, sort=True):
+		sort = self.sort if sort else lambda x: x
+		outputs = []
+		for folder in folder_names:
+			outputs += self.parse_folder(folder, sort=False)
+		return sort(outputs)
 
 	def get_folder_table(self, folder_name):
-		data = self.sort(self.parse_folder(folder_name))
+		data = self.parse_folder(folder_name, sort=True)
 		return tabulate.tabulate(data, headers='keys', showindex=True)
 
 	def sort(self, data_list):
