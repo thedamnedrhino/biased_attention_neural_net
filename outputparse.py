@@ -51,9 +51,16 @@ class Parser:
 			outputs += self.parse_folder(folder, sort=False)
 		return sort(outputs)
 
+	def tabulate(self, data):
+		return tabulate.tabulate(data, headers='keys', showindex=True)
+
 	def get_folder_table(self, folder_name):
 		data = self.parse_folder(folder_name, sort=True)
-		return tabulate.tabulate(data, headers='keys', showindex=True)
+		return self.tabulate(data)
+
+	def get_folders_table(self, folders):
+		data = self.parse_folders(folders)
+		return self.tabulate(data)
 
 	def sort(self, data_list):
 		return sorted(data_list, key=lambda x: x[self.sort_column])
