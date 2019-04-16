@@ -57,16 +57,16 @@ class Plots:
 
 	def top_5_acc(self):
 		N = 5
-		menMeans = (81.8, 81.6, 81.5, 81.4, 81.4)
-		womenMeans = [80.0] * 5
-		print(womenMeans)
+		extended = (81.8, 81.6, 81.5, 81.4, 81.4)
+		base = [80.0] * 5
+		print(base)
 		# menStd = (2, 3, 4, 1, 2)
 		# womenStd = (3, 5, 2, 3, 3)
 		ind = np.arange(N)    # the x locations for the groups
 		width = 0.35       # the width of the bars: can also be len(x) sequence
 
-		p2 = plt.bar(ind, menMeans, width)
-		p1 = plt.bar(ind, womenMeans, width)
+		p2 = plt.bar(ind, extended, width)
+		p1 = plt.bar(ind, base, width)
 
 		bottom=79.0
 		top=82
@@ -76,7 +76,24 @@ class Plots:
 		plt.yticks(np.arange(bottom, top, 0.5))
 		plt.ylim(bottom, top)
 		plt.legend((p1[0], p2[0]), ('Base 80%', 'Extended Network'))
+		def autolabel(rects, xpos='center'):
+			"""
+			Attach a text label above each bar in *rects*, displaying its height.
 
+			*xpos* indicates which side to place the text w.r.t. the center of
+			the bar. It can be one of the following {'center', 'right', 'left'}.
+			"""
+
+			xpos = xpos.lower()  # normalize the case of the parameter
+			ha = {'center': 'center', 'right': 'left', 'left': 'right'}
+			offset = {'center': 0.5, 'right': 0.57, 'left': 0.43}  # x_txt = x + w*off
+
+			for rect in rects:
+				height = rect.get_height()
+				plt.text(rect.get_x() + rect.get_width()*offset[xpos], 1*height,
+						 '{}'.format(height), ha=ha[xpos], va='bottom')
+
+		autolabel(p2)
 		plt.show()
 P = Plots()
 
@@ -92,6 +109,6 @@ def top_5_acc():
 	P.top_5_acc()
 
 if __name__ == '__main__':
-	run()
+	#run()
 	#cos_reg()
-	#top_5_acc()
+	top_5_acc()
