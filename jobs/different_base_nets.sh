@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32000
-#SBATCH --time=0-01:30
+#SBATCH --mem=8000
+#SBATCH --time=0-01:00
 #SBATCH --output=%x_%a.out
 #SBATCH --error=%x_%a.err
 #SBATCH --mail-user=fsharifb@sfu.ca
