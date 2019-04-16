@@ -232,7 +232,7 @@ class AbstractExtendedNet(nn.Module):
 		# loss is mutable so we can only keep it this way
 		old_loss = loss.item()
 		# regularize parameters in fc1 to selectively choose features
-		loss = self._add_regularization(layer, loss)
+		loss = self.regularizer.regularize(layer, loss)
 		new_loss = loss.item()
 		diff = new_loss - old_loss
 		if self.super_verbose:
@@ -241,17 +241,6 @@ class AbstractExtendedNet(nn.Module):
 			# save output every 10 batches - we don't want to keep too much data: (5 can be any other number in [0, 10])
 			self.reg_diffs[0].append(diff)
 			self.reg_diffs[1].append(diff/old_loss)
-		return loss
-
-	def _add_regularization(self, layer, loss):
-		return self.regularizer.regularize(layer, loss)
-		l2 = 0
-		count = 0
-		for p in layer.parameters():
-			l2 += (p**2).sum()
-			count += 1
-		l2 /= count
-		loss += l2 * self.regularization_rate
 		return loss
 
 	def loss_hook(self, loss):
