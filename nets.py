@@ -129,7 +129,7 @@ class ExtendedNetFactory:
 				'featNPO_Smax_ch': net_factory.probability_output_softmax_channelwise
 				}
 
-		return constructors[net_name](nested_net, aggregate_feature_count, **net_args)
+		return constructors[net_name](nested_net, aggregate_feature_count=aggregate_feature_count, **net_args)
 
 
 class AbstractExtendedNet(nn.Module):
@@ -322,12 +322,12 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		output, nested_output = self.softmax(output), self.softmax(nested_output)
 
-		self.metrics.batch_run(output, nested_output)
 		if self.include_original:
 			output = torch.cat((output, nested_output), 1)
 
 		output = self.fc2(output)
 
+		self.metrics.batch_run(output, nested_output)
 		# self.normalizeds, self.normals = output, nested_output
 
 		return output
