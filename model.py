@@ -145,15 +145,19 @@ class SimpleNet(nn.Module):
 		return output
 
 class SimpleNet_TwoFC(SimpleNet):
-	def __init__(self, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32, nonlinear='sigmoid', regularization_rate=0.0, regularization_type='l2', **kwargs):
+	def __init__(self, aggregate_feature_count, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32, nonlinear='sigmoid', regularization_rate=0.0, regularization_type='l2', **kwargs):
 		super(SimpleNet_TwoFC, self).__init__(num_classes, in_channels, hidden_channels, height, width, nonlinear, **kwargs)
 		regularization_rate = float(regularization_rate) if regularization_rate is not None else 0
 		self.regularize = regularization_rate != 0
 		if self.regularize:
 			self.regularizer = nets.Regularizer(regularization_type, regularization_rate)
 		print("%s, %s, %s" % (self.regularize, regularization_type, regularization_rate))
-		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
-		self.fc2 = nn.Linear(in_features=self.num_classes**2, out_features=self.num_classes)
+
+		self.aggregate_feature_count = aggregate_feature_count if aggregate_feature_count is not None else num_classes**2
+		print(self.aggregate_feature_count)
+
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.aggregate_feature_count)
+		self.fc2 = nn.Linear(in_features=self.aggregate_feature_count, out_features=self.num_classes)
 		# replace the original fully conected layer in the parent class with a sequential of the above two FCs
 		self.fc = nn.Sequential(self.fc1, self.nonlinear, self.fc2)
 
@@ -163,19 +167,22 @@ class SimpleNet_TwoFC(SimpleNet):
 			return self.regularizer.regularize(self.fc1, loss)
 
 class SimpleNet_ClassDifferentiatedFC(SimpleNet):
-	def __init__(self, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32, nonlinear='sigmoid', **kwargs):
+	def __init__(self, aggregate_feature_count, num_classes=3, in_channels=3, hidden_channels=HIDDEN_CHANNELS, height=32, width=32, nonlinear='sigmoid', **kwargs):
 		super(SimpleNet_ClassDifferentiatedFC, self).__init__(num_classes, in_channels, hidden_channels, height, width, nonlinear, **kwargs)
-		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
+		self.aggregate_feature_count = aggregate_feature_count if aggregate_feature_count is not None else num_classes**2
+		assert self.aggregate_feature_count % self.num_classes**2 == 0, 'number of aggregate features, i.e first FC unit after convolution must be divisible by the number of classes^2 in the ClassDifferentiatedFC net'
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.aggregate_feature_count)
 		mask = self.create_class_differentiated_connection_mask()
 		self.fc2 = CustomizedLinear.CustomizedLinear.CustomizedLinear(mask)
 		self.fc = nn.Sequential(self.fc1, self.nonlinear, self.fc2)
 
 	def create_class_differentiated_connection_mask(self):
-		mask = [[0 for x in range(self.num_classes)] for y in range(self.num_classes**2)]
-		for i in range(self.num_classes**2):
-			for j in range(self.num_classes):
-				if j == i / self.num_classes or j == i % self.num_classes:
-					mask[i][j] = 1
+		mask = [[0 for x in range(self.num_classes)] for y in range(self.aggregate_feature_count)]
+		for f in range(self.aggregate_feature_count//self.num_classes**2):
+			for i in range(self.num_classes**2):
+				for j in range(self.num_classes):
+					if j == i / self.num_classes or j == i % self.num_classes:
+						mask[f*self.num_classes**2 + i][j] = 1
 		return torch.tensor(mask)
 
 class NetworkManager:
@@ -185,7 +192,9 @@ class NetworkManager:
 		'diff_fc': SimpleNet_ClassDifferentiatedFC
 		}
 	BASE_NETS = list(BASE_NET_MAP.keys())
-	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu', extended_net_args={}, base_net_args={}, train_on_validation=False, super_verbose=False):
+	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu',
+			base_aggregate_feature_count=None, base_net_args={}, extended_aggregate_feature_count=None,
+			extended_net_args={}, train_on_validation=False, super_verbose=False):
 		"""
 		limit: limit the size of the dataset
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
@@ -205,7 +214,8 @@ class NetworkManager:
 		self.toggle_super_verbosity(0)
 
 		#Create model, optimizer and loss function
-		self.model = self.create_model(hidden_channels, base_net, bool(extended_net), bool(checkpoint_file_name), extended_net, extended_net_args=extended_net_args, base_net_args=base_net_args, checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=nonlinear)
+		self.model = self.create_model(hidden_channels, base_net, bool(extended_net), bool(checkpoint_file_name), extended_net,base_net_args=base_net_args, extended_net_args=extended_net_args, checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=nonlinear,
+				base_aggregate_feature_count=base_aggregate_feature_count, extended_aggregate_feature_count=extended_aggregate_feature_count)
 
 		#Check if gpu support is available
 		self.cuda_avail = torch.cuda.is_available()
@@ -219,8 +229,8 @@ class NetworkManager:
 		self.optimizer = Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0001)
 		self.loss_fn = nn.CrossEntropyLoss()
 
-	def create_model(self, hidden_channels, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, base_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None):
-		model = self.create_base_model(hidden_channels=hidden_channels, net_name=base_net, nonlinear=nonlinear, net_args=base_net_args)
+	def create_model(self, hidden_channels, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, base_aggregate_feature_count=None, extended_aggregate_feature_count=None, base_net_args={}):
+		model = self.create_base_model(aggregate_feature_count=base_aggregate_feature_count, hidden_channels=hidden_channels, net_name=base_net, nonlinear=nonlinear, net_args=base_net_args)
 		if load_saved and not extended_checkpoint:
 			self.load_checkpoint(model, checkpoint_file_name)
 
@@ -232,16 +242,16 @@ class NetworkManager:
 					for p in model.fc.parameters():
 						p.requires_grad = True
 
-			model = nets.ExtendedNetFactory().create_net(extended_net_name, model, extended_net_args)
+			model = nets.ExtendedNetFactory().create_net(extended_net_name, model, extended_net_args, aggregate_feature_count=extended_aggregate_feature_count)
 
 			if extended_checkpoint:
 				self.load_checkpoint(model, checkpoint_file_name)
 
 		return model
 
-	def create_base_model(self, hidden_channels, net_name, nonlinear, net_args={}):
+	def create_base_model(self, aggregate_feature_count, hidden_channels, net_name, nonlinear, net_args={}):
 		net_class = type(self).BASE_NET_MAP[net_name]
-		return net_class(hidden_channels=hidden_channels, nonlinear=nonlinear, **net_args)
+		return net_class(aggregate_feature_count=aggregate_feature_count, hidden_channels=hidden_channels, nonlinear=nonlinear, **net_args)
 
 	def __init(self, set):
 		if set == 'train':
@@ -502,6 +512,7 @@ if __name__ == "__main__":
 	optparser.add_argument("--super-verbose", dest="superverbose", nargs="?", default=False, const=0.0,  help="whether to be super verbose. Optionally supply a value to start super verbosity when validation accuracy is above that value.")
 	optparser.add_argument("--base-net", default="simple", dest='basenet', choices=NetworkManager.BASE_NETS, help="which base net to use. Choose from [{}]".format(', '.join(NetworkManager.BASE_NETS)))
 	optparser.add_argument("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear to use for the two_FC and diff_FC base nets 'relu', 'tanh', 'sigmoid', 'none'. Has no effect with the simple base")
+	optparser.add_argument("-f", "--aggregate-feature-count", dest="aggregatefeaturecount", default=None, type=int, help="the number of aggregate features, i.e fully connected nodes in the first FC after the last convolution. (Not in effect for the simple net)")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	epochs = int(opts.epochs)
@@ -528,6 +539,7 @@ if __name__ == "__main__":
 		learning_rate = float(opts.learningrate)
 		static_learning_rate = True
 
+	aggregate_feature_count = opts.aggregatefeaturecount
 	extended_net_args, base_net_args = [{k: v for k, v in [arg.split('=') for arg in args]} for args in [opts.netargs, opts.basenetargs]]
 	def normalize_input_args(args):
 		for k, v in args.items():
@@ -548,7 +560,10 @@ if __name__ == "__main__":
 		transformers = []
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
-	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear, extended_net_args=extended_net_args, base_net_args=base_net_args,
+	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear,
+			base_aggregate_feature_count=aggregate_feature_count, extended_aggregate_feature_count=aggregate_feature_count,
+			base_net_args=base_net_args,
+			extended_net_args=extended_net_args,
 			train_on_validation=merge_validation, super_verbose=super_verbose)
 
 	if not validate_only and not test_only:

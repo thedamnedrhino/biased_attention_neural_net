@@ -108,7 +108,7 @@ class ExtendedNetFactory:
 			'featNPO_Smax_g': 'Features normalized with normalizers generated from probability output with a global after',
 			'featNPO_Smax_ch': 'same as before, but the softmax is channelwise, i.e: at each locations the channel feature values sum up to 1'}
 
-	def create_net(self, net_name, nested_net, net_args):
+	def create_net(self, net_name, nested_net, net_args, aggregate_feature_count=None):
 		assert net_name in ExtendedNetFactory.NETS, 'net_name argument must be ExtendedNetFactory.NETS: [{}]. "{}" provided.'.format(','.join(ExtendedNetFactory.NETS.keys()), net_name)
 		net_factory = FeatureNormalizedNetFactory()
 		constructors = {
@@ -129,13 +129,14 @@ class ExtendedNetFactory:
 				'featNPO_Smax_ch': net_factory.probability_output_softmax_channelwise
 				}
 
-		return constructors[net_name](nested_net, **net_args)
+		return constructors[net_name](nested_net, aggregate_feature_count=aggregate_feature_count, **net_args)
 
 
 class AbstractExtendedNet(nn.Module):
-	def __init__(self, nested_model, nonlinear='relu', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, regularization_type='l2', **kwargs):
+	def __init__(self, nested_model, aggregate_feature_count, nonlinear='relu', fc_include_class_prob=True, enable_fc_class_correlate=True, include_original=True, regularization_rate=0.0, regularization_type='l2', **kwargs):
 		super(AbstractExtendedNet, self).__init__()
 		self.num_classes = nested_model.num_classes
+		self.aggregate_feature_count = self._resolve_aggregate_feature_count(aggregate_feature_count)
 		self.hidden_channels = nested_model.hidden_channels
 		self.height = nested_model.height
 		self.width = nested_model.width
@@ -197,6 +198,9 @@ class AbstractExtendedNet(nn.Module):
 	def _linearize_features_(self, features):
 		return features.view(-1, features.size(-2) * features.size(-1))
 
+	def _resolve_aggregate_feature_count(self, count):
+		return count if count is not None else self.num_classes**2
+
 	def _init_layers(self):
 		raise Exception('implement this')
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
@@ -253,8 +257,8 @@ class RegularExtendedNet(AbstractExtendedNet):
 	def _init_layers(self):
 		if self.include_original is False:
 			raise Exception('the "regular" extended net does not work without the originals')
-		self.fc1 = nn.Linear(in_features=self.num_features() + self.num_classes, out_features=self.num_classes**2)
-		self.fc2 = nn.Linear(in_features=self.num_classes**2 + self.num_classes, out_features=self.num_classes)
+		self.fc1 = nn.Linear(in_features=self.num_features() + self.num_classes, out_features=self.aggregate_feature_count)
+		self.fc2 = nn.Linear(in_features=self.aggregate_feature_count + self.num_classes, out_features=self.num_classes)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 		# nested_features = self._linearize_features_(nested_features)
@@ -276,10 +280,10 @@ class FCNormalizedNet(AbstractExtendedNet):
 	def _init_layers(self):
 		self.metrics = FCNormalizedNet.Metrics(self)
 		# all the features plus the class probability for each class go in
-		# self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + int(self.include_original)*self.num_classes**2, out_features=self.num_classes)
+		# self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes + (int(self.include_original)*self.num_classes*)*self.num_classes, out_features=self.aggregate_feature_count)
 		# I decided against the above, because combining feature maps, with class values (i.e: result of passing maps through an FC) is hard see notes in self._process()
-		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes, out_features=self.num_classes)
-		self.fc2 = nn.Linear(in_features=self.num_classes + int(self.include_original) * self.num_classes, out_features=self.num_classes) # inputs are from previous layer and last layer in the base net
+		self.fc1 = nn.Linear(in_features=self.num_features()*self.num_classes, out_features=self.aggregate_feature_count)
+		self.fc2 = nn.Linear(in_features=self.aggregate_feature_count + int(self.include_original) * self.num_classes, out_features=self.num_classes) # inputs are from previous layer and last layer in the base net
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):
 
@@ -318,12 +322,12 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		output, nested_output = self.softmax(output), self.softmax(nested_output)
 
-		self.metrics.batch_run(output, nested_output)
 		if self.include_original:
 			output = torch.cat((output, nested_output), 1)
 
 		output = self.fc2(output)
 
+		self.metrics.batch_run(output, nested_output)
 		# self.normalizeds, self.normals = output, nested_output
 
 		return output
@@ -378,8 +382,8 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 		self.normalization_layer = layer
 
 	def _init_layers(self):
-		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.num_classes**2)
-		self.fc2 = nn.Linear(in_features=self.num_classes**2, out_features=self.num_classes)
+		self.fc1 = nn.Linear(in_features=self.num_features(), out_features=self.aggregate_feature_count)
+		self.fc2 = nn.Linear(in_features=self.aggregate_feature_count, out_features=self.num_classes)
 		self.final_fc = nn.Sequential(self.fc1, self.nonlinear, self.fc2)
 
 	def _process(self, nested_output, nested_probs, nested_features, normalized_features):

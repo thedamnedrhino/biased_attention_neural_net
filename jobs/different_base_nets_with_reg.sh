@@ -1,0 +1,41 @@
+#!/bin/bash
+#SBATCH --account=def-functor
+#SBATCH --gres=gpu:1
+#SBATCH --mem=8000
+#SBATCH --time=0-01:00
+#SBATCH --output=%x_%a.out
+#SBATCH --error=%x_%a.err
+#SBATCH --mail-user=fsharifb@sfu.ca
+#SBATCH --mail-type=ALL
+#SBATCH --array=0-134
+
+# %x is the job name
+
+NETS=(two_fc)
+AGGREGATE_FEATURE_COUNTS=(18 36 72)
+NON_LINEARS=(relu sigmoid tanh)
+REGULARIZATION_TYPES=(l1 l2 cos)
+REGULARIZATION_RATES=(0.001 0.01 0.1 1 10)
+JOB_NUM=${SLURM_ARRAY_TASK_ID}
+let REGULARIZATION_RATE_INDEX=${JOB_NUM}%5
+let JOB_NUM=${JOB_NUM}/5
+let REGULARIZATION_TYPE_INDEX=${JOB_NUM}%3
+let JOB_NUM=${JOB_NUM}/3
+let NON_LINEAR_INDEX=${JOB_NUM}%3
+let JOB_NUM=${JOB_NUM}/3
+let AGGREGATE_FEATURE_COUNT_INDEX=${JOB_NUM}%3
+let NET_INDEX=${JOB_NUM}/3
+
+NET=${NETS[${NET_INDEX}]}
+AGGREGATE_FEATURE_COUNT=${AGGREGATE_FEATURE_COUNTS[${AGGREGATE_FEATURE_COUNT_INDEX}]}
+NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
+REGULARIZATION_TYPE=${REGULARIZATION_TYPES[${REGULARIZATION_TYPE_INDEX}]}
+REGULARIZATION_RATE=${REGULARIZATION_RATES[${REGULARIZATION_RATE_INDEX}]}
+
+OUTPUT_FOLDER=${OUTPUT_FOLDER:-'experiment_outputs/different_base_nets/regularization/'}
+mkdir -p OUTPUT_FOLDER
+FILE_NAME=${OUTPUT_FOLDER}/${NET}_${NON_LINEAR}_agg_feat-${AGGREGATE_FEATURE_COUNT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}
+
+source startup.sh
+python model.py -e 120 -d '../datasets' -a -m ${FILE_NAME}.model  --base-net=${NET} --base-net-args regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} -f ${AGGREGATE_FEATURE_COUNT} --non-linear=${NON_LINEAR} > ${FILE_NAME}.out
+
