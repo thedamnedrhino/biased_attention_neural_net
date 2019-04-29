@@ -1,9 +1,11 @@
 .*
 !.gitignore
 *.zip
+!accuracy_outputs.zip
 .ipynb_checkpoints/
 __pycache__/
 venv/
 datasets/
 *.pyc
 temp_outputs/
+accuracy_outputs/

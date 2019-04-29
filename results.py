@@ -2,9 +2,7 @@ import outputparse
 
 class Results:
 	OUTPUT_FOLDERS=[
-			('experiment_outputs/feat_norm_outputs/2/', 'acc'),
-			('outputs/full/vanilla/', 'acc'),
-			('full_diff_base_nets_outputs/', 'acc'),
+			('accuracy_outputs/', 'acc'),
 	]
 
 	def __init__(self, sort='valid_acc'):
