@@ -7,9 +7,7 @@ import outputparse
 
 class Results:
 	OUTPUT_FOLDERS=[
-			('experiment_outputs/feat_norm_outputs/2/', 'acc'),
-			('outputs/full/vanilla/', 'acc'),
-			('full_diff_base_nets_outputs/', 'acc'),
+			('accuracy_outputs/', 'acc'),
 	]
 
 	def __init__(self, sort='valid_acc'):
@@ -109,6 +107,6 @@ def top_5_acc():
 	P.top_5_acc()
 
 if __name__ == '__main__':
-	#run()
+	run()
 	#cos_reg()
-	top_5_acc()
+	#top_5_acc()

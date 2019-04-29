@@ -8,9 +8,18 @@ class Parser:
 	def __init__(self, base_folder='', sort_column='valid_acc'):
 		self.base_folder = base_folder
 		self.sort_column = sort_column
+		self.parsing = None
+
+	def parse_line_error(self, line):
+		print("error parsing file \"{}\"".format(self.parsing))
+		return {'valid_acc':0, 'train_acc': 0, 'train_loss': 0}
 
 	def _parse_accuracy_line(self, line):
 		parts = line.split()
+		try:
+			assert 'epoch:' == parts[0].lower()
+		except:
+			return self.parse_line_error(line)
 		epoch = parts[1]
 		# the 0th and 2nd items are the literals 'epoch:' and 'accuracy:'
 		# The 3rd item and afterward constitute the accuracy json, stick them back together, and do some json specific correction:
@@ -26,6 +35,7 @@ class Parser:
 			}
 
 	def _parse_file(self, file_name):
+		self.parsing = file_name
 		with open(file_name, 'r') as f:
 			return self._parse_accuracy_line(f.readline())
 	def parse_file(self, file_name):
