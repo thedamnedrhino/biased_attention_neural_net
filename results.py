@@ -107,6 +107,6 @@ def top_5_acc():
 	P.top_5_acc()
 
 if __name__ == '__main__':
-	#run()
+	run()
 	#cos_reg()
-	top_5_acc()
+	#top_5_acc()
