@@ -498,6 +498,8 @@ class FeatureNormalizationLayer_RawOutput_Softmax_GlobalChannelwise(AbstractFeat
 		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=self.num_hidden_channels, bias=bias)
 		if init_0_weights:
 			self.normalizer_fc.weight.data.fill_(0.0)
+			if bias:
+				self.normalizer_fc.bias.data.fill_(0.0)
 
 	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
 		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features, shaped_nested_features)
