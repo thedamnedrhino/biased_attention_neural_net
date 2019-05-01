@@ -65,6 +65,7 @@ class SimpleNet(nn.Module):
 		"""
 		super(SimpleNet,self).__init__()
 
+		self.regularizer = None # to be used in child classes
 		self.hidden_channels = hidden_channels
 		self.height = height
 		self.width = width
@@ -121,6 +122,10 @@ class SimpleNet(nn.Module):
 								 # self.unit12, self.unit13, self.unit14, self.avgpool)
 		self.net = nn.Sequential(self.unit1, self.unit2, self.pool1, self.unit3, self.unit4, self.avgpool)
 		self.fc = nn.Linear(in_features=self.num_features(),out_features=num_classes)
+
+	def learning_rate_updated(self, old_rate, new_rate):
+		if self.regularizer is not None:
+			self.regularizer.learning_rate_updated(old_rate, new_rate)
 
 	def loss_hook(self, loss):
 		return loss
@@ -330,7 +335,9 @@ class NetworkManager:
 					print("")
 
 			#Call the learning rate adjustment function
+			old_lr = self.learning_rate
 			self.adjust_learning_rate(epoch)
+			self.model.learning_rate_updated(old_lr, self.learning_rate)
 
 			#Compute the average acc and loss over all 50000 training images
 			train_acc = train_acc / float(len(train_loader.dataset))
@@ -459,19 +466,8 @@ class NetworkManager:
 
 		lr = self.learning_rate
 
-		if epoch > 180:
-			lr = lr / 10
-		elif epoch > 150:
-			lr = lr / 10
-		elif epoch > 120:
-			lr = lr / 10
-		elif epoch > 90:
-			lr = lr / 10
-		elif epoch > 60:
-			lr = lr / 10
-		elif epoch > 30:
-			lr = lr / 10
-
+		if (epoch+1)%30 == 0:
+			lr /= 10
 		for param_group in self.optimizer.param_groups:
 			param_group["lr"] = lr
 

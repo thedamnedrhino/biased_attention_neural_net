@@ -75,6 +75,13 @@ class Regularizer:
 		else:
 			raise Exception('don\'t have this regularization type: "%s"' % self.reg_type)
 
+	def learning_rate_updated(self, old_rate, new_rate):
+		self.update_reg_rate(self.reg_rate*(new_rate/old_rate))
+		print(self.reg_rate)
+
+	def update_reg_rate(self, reg_rate):
+		self.reg_rate = reg_rate
+
 	def regularize(self, layer, loss):
 		loss += self.reg(layer)
 		return loss
@@ -173,6 +180,11 @@ class AbstractExtendedNet(nn.Module):
 		self.metrics = None
 		self.reset_reg_diffs()
 		self._init_layers()
+
+	def learning_rate_updated(self, old_rate, new_rate):
+		self.nested_model.learning_rate_updated(old_rate, new_rate)
+		if self.regularizer is not None:
+			self.regularizer.learning_rate_updated(old_rate, new_rate)
 
 	def num_features(self):
 		return self.nested_model.num_features()
