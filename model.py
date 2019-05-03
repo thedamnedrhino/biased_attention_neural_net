@@ -10,6 +10,7 @@ import numpy as np
 
 import optparse
 import pickle
+import sys
 
 import dataset
 import nets
@@ -354,6 +355,7 @@ class NetworkManager:
 
 			# Print the metrics
 			print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
+			sys.stdout.flush()
 
 	def validate(self):
 		self.__init('validate')

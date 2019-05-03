@@ -166,6 +166,7 @@ class AbstractExtendedNet(nn.Module):
 		self.include_original = include_original
 		regularization_rate = float(regularization_rate) if regularization_rate is not None else 0
 		self.regularize = bool(regularization_rate)
+		self.regularizer = None
 		if self.regularize:
 			self.regularizer = Regularizer(regularization_type, regularization_rate)
 		for k, v in kwargs:
