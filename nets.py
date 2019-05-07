@@ -109,6 +109,7 @@ class ExtendedNetFactory:
 			'featNRO_Smax_g': 'Features normalized with normalizers generated from raw output with a global after',
 			'featNRO_Smax_ch': 'same as before, but the softmax is channelwise, i.e: at each locations the channel feature values sum up to 1',
 			'featNRO_Smax_g_ch': 'same as before, but each channel is assigned one weight, i.e: all pixels (activation map nodes) in a single channel get the same weight',
+			'featNRO_S_g_ch': 'same as before, but the probabilities are computed by applying a sigmoid on each channel\'s computed normalization value',
 
 			'featNPO_R': 'Features normalized with normalizers generated from probability output with no non-linear after',
 			'featNPO_S':'Features normalized with normalizers generated from probability output with a sigmoid after',
@@ -116,6 +117,7 @@ class ExtendedNetFactory:
 			'featNPO_Smax_g': 'Features normalized with normalizers generated from probability output with a global after',
 			'featNPO_Smax_ch': 'same as before, but the softmax is channelwise, i.e: at each locations the channel feature values sum up to 1',
 			'featNPO_Smax_g_ch': 'same as before, but each channel is assigned one weight, i.e: all pixels (activation map nodes) in a single channel get the same weight',
+			'featNPO_S_g_ch': 'same as before, but the probabilities are computed by applying a sigmoid on each channel\'s computed normalization value',
 			}
 
 	def create_net(self, net_name, nested_net, net_args, aggregate_feature_count=None):
@@ -130,15 +132,17 @@ class ExtendedNetFactory:
 				'featNRO_S': net_factory.raw_output_sigmoid,
 				'featNRO_Th': net_factory.raw_output_tanh,
 				'featNRO_Smax_g': net_factory.raw_output_softmax_global,
-				'featNRO_Smax_ch': net_factory.raw_output_softmax_channelwise,
-				'featNRO_Smax_g_ch': net_factory.raw_output_softmax_global_channelwise,
+				'featNRO_Smax_ch': net_factory.raw_output_softmax_global_over_pixel_channels,
+				'featNRO_Smax_g_ch': net_factory.raw_output_softmax_per_channel,
+				'featNRO_S_g_ch': net_factory.raw_output_sigmoid_per_channel,
 
 				'featNPO_R': net_factory.probability_output_raw,
 				'featNPO_S': net_factory.probability_output_sigmoid,
 				'featNPO_Th': net_factory.probability_output_tanh,
 				'featNPO_Smax_g': net_factory.probability_output_softmax_global,
-				'featNPO_Smax_ch': net_factory.probability_output_softmax_channelwise,
-				'featNPO_Smax_g_ch': net_factory.probability_output_softmax_global_channelwise,
+				'featNPO_Smax_ch': net_factory.probability_output_softmax_global_over_pixel_channels,
+				'featNPO_Smax_g_ch': net_factory.probability_output_softmax_per_channel,
+				'featNPO_S_g_ch': net_factory.probability_output_sigmoid_per_channel,
 				}
 
 		return constructors[net_name](nested_net, aggregate_feature_count=aggregate_feature_count, **net_args)
@@ -422,124 +426,180 @@ class FeatureNormalizedNet(AbstractExtendedNet):
 		return self._reguralize_layer(self.fc1, loss)
 
 class FeatureNormalizedNetFactory:
+	def __init__(self):
+		self.sigmoid = nn.Sigmoid()
+		self.tanh = nn.Tanh()
+		self.softmax = nn.Softmax()
+		self.softmax2d = nn.Softmax2d()
+		self.no_nonlinear = lambda x: x
+
 	def __net(self, nested_model, layer, **net_kwargs):
 		net = FeatureNormalizedNet(nested_model, **net_kwargs)
 		net.set_normalization_layer(layer)
 		return net
 
-	def raw_output_raw(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Raw(nested_model.num_classes, nested_model.num_features())
+	def __per_feature_normalization_layer(self, nested_model, nonlinear, use_raw_output, init_0_weights, bias):
+		return PerFeatureNormalizationLayer(nested_model.num_classes, nested_model.num_features(), nonlinear=nonlinear, use_raw_output=use_raw_output, init_0_weights=init_0_weights, bias=bias)
+	def __per_feature_shaped_map_normalization_layer(self, nested_model, nonlinear, use_raw_output, init_0_weights, bias):
+		return PerFeatureShapedMapNormalizationLayer(nested_model.num_classes, nested_model.num_features(), nonlinear=nonlinear, use_raw_output=use_raw_output, init_0_weights=init_0_weights, bias=bias)
+	def __per_channel_normalization_layer(self, nested_model, nonlinear, use_raw_output, init_0_weights, bias):
+		return ChannelFeatureNormalizationLayer(nested_model.hidden_channels, nested_model.num_classes, nested_model.num_features(), nonlinear=nonlinear, use_raw_output=use_raw_output, init_0_weights=init_0_weights, bias=bias)
+
+	def raw_output_raw(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.no_nonlinear
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def raw_output_sigmoid(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Sigmoid(nested_model.num_classes, nested_model.num_features())
+
+	def raw_output_sigmoid(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.sigmoid
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def raw_output_tanh(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Tanh(nested_model.num_classes, nested_model.num_features())
+
+	def raw_output_tanh(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.tanh
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def raw_output_softmax_global(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Softmax_Global(nested_model.num_classes, nested_model.num_features())
+
+	def raw_output_softmax_global(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.softmax
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def raw_output_softmax_channelwise(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Softmax_Channelwise(nested_model.num_classes, nested_model.num_features())
+
+	def raw_output_softmax_global_over_pixel_channels(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.softmax2d
+		normalization_layer = self.__per_feature_shaped_map_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def raw_output_softmax_global_channelwise(self, nested_model, init_0_weights=True, bias=True, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_RawOutput_Softmax_GlobalChannelwise(nested_model.hidden_channels, nested_model.num_classes, nested_model.num_features(), init_0_weights=init_0_weights, bias=bias)
+
+	def raw_output_softmax_per_channel(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.softmax
+		normalization_layer = self.__per_channel_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_raw(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Raw(nested_model.num_classes, nested_model.num_features())
+
+	def raw_output_sigmoid_per_channel(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = True
+		nonlinear = self.sigmoid
+		normalization_layer = self.__per_channel_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_sigmoid(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Sigmoid(nested_model.num_classes, nested_model.num_features())
+
+	def probability_output_raw(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.no_nonlinear
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_tanh(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Tanh(nested_model.num_classes, nested_model.num_features())
+
+	def probability_output_sigmoid(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.sigmoid
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_softmax_global(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Softmax_Global(nested_model.num_classes, nested_model.num_features())
+
+	def probability_output_tanh(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.tanh
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_softmax_channelwise(self, nested_model, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Softmax_Channelwise(nested_model.num_classes, nested_model.num_features())
+
+	def probability_output_softmax_global(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.softmax
+		normalization_layer = self.__per_feature_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
-	def probability_output_softmax_global_channelwise(self, nested_model, init_0_weights=True, bias=True, **kwargs):
-		normalization_layer = FeatureNormalizationLayer_ProbabilityOutput_Softmax_GlobalChannelwise(nested_model.hidden_channels, nested_model.num_classes, nested_model.num_features(), init_0_weights=init_0_weights, bias=bias)
+
+	def probability_output_softmax_global_over_pixel_channels(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.softmax2d
+		normalization_layer = self.__per_feature_shaped_map_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
+		return self.__net(nested_model, normalization_layer, **kwargs)
+
+	def probability_output_softmax_per_channel(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.softmax
+		normalization_layer = self.__per_channel_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
+		return self.__net(nested_model, normalization_layer, **kwargs)
+	def probability_output_sigmoid_per_channel(self, nested_model, init_0_weights=True, bias=True, **kwargs):
+		use_raw_output = False
+		nonlinear = self.sigmoid
+		normalization_layer = self.__per_channel_normalization_layer(nested_model, nonlinear, use_raw_output, init_0_weights=init_0_weights, bias=bias)
 		return self.__net(nested_model, normalization_layer, **kwargs)
 
 class AbstractFeatureNormalizationLayer(nn.Module):
 
-	def __init__(self, num_classes, num_features):
+	def __init__(self, num_classes, num_features, normalizer_fc, nonlinear, use_raw_output=False, init_0_weights=False, bias=True):
+		"""
+		param use_raw_output whether to use raw or probability output (output through softmax) to generate normalizers
+		normalizer_fc the fc that is used in child classes to generate normalizers, i.e attention, over the features
+		"""
 		super(AbstractFeatureNormalizationLayer, self).__init__()
 		self.num_classes = num_classes
 		self.num_features = num_features
-		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=self.num_features)
-		self.sigmoid = nn.Sigmoid()
-		self.tanh = nn.Tanh()
-		self.softmax = nn.Softmax()
-		self.softmax2d = nn.Softmax2d()
+		self.nonlinear = nonlinear
+		self.normalizer_fc = normalizer_fc
+		self.use_raw_output = use_raw_output
+		if init_0_weights:
+			self.normalizer_fc.weight.data.fill_(0.0)
+			if bias:
+				self.normalizer_fc.bias.data.fill_(0.0)
 
 	def forward(self, nested_output, nested_probs, nested_features, shaped_nested_features, normalized_features):
 		return self.normalize_features(nested_output, nested_probs, nested_features, shaped_nested_features)
+
+	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
+		raise Exception('implement this')
+
+class PerFeatureNormalizationLayer(AbstractFeatureNormalizationLayer):
+	"""
+	This normalization layer, normalizes each individual feature in the conv layer independently
+	of all other features.
+	See ChannelFeatureNormalizationLayer in contrast
+	"""
+	def __init__(self, num_classes, num_features, nonlinear, use_raw_output, init_0_weights=False, bias=True):
+		normalizer_fc = nn.Linear(in_features=num_classes, out_features=num_features, bias=bias)
+		super(PerFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights)
 
 	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
 		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features, shaped_nested_features)
 		normalized_features = nested_features * feature_normalizers
 		return normalized_features
 
-	def feature_normalizers(self, nested_output, nested_probs, nested_features):
-		raise Exception('implement this')
+	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
+		input = nested_output if self.use_raw_output else nested_probs
+		return self.nonlinear(self.normalizer_fc(input))
 
 
-class FeatureNormalizationLayer_RawOutput_Raw(AbstractFeatureNormalizationLayer):
+class PerFeatureShapedMapNormalizationLayer(PerFeatureNormalizationLayer):
+	"""
+	This class is very similar to its parent class and computes one normalization(attention) weight per pixel, but
+	it computes these weights based on a local decision from all the channels at a pixel location. It was specifically
+	created for use with Softmax2d
+	"""
 	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-	 	return self.normalizer_fc(nested_output)
-class FeatureNormalizationLayer_RawOutput_Sigmoid(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-	 	return self.sigmoid(self.normalizer_fc(nested_output))
-class FeatureNormalizationLayer_RawOutput_Tanh(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-	 	return self.tanh(self.normalizer_fc(nested_output))
-class FeatureNormalizationLayer_RawOutput_Softmax_Global(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-	 	return self.softmax(self.normalizer_fc(nested_output))
-class FeatureNormalizationLayer_RawOutput_Softmax_Channelwise(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-	 	return self.softmax2d(self.normalizer_fc(nested_output).view(shaped_nested_features.size())).view(nested_features.size())
-class FeatureNormalizationLayer_RawOutput_Softmax_GlobalChannelwise(AbstractFeatureNormalizationLayer):
-	def __init__(self, num_hidden_channels, num_classes, num_features, init_0_weights=True, bias=True):
-		super(FeatureNormalizationLayer_RawOutput_Softmax_GlobalChannelwise, self).__init__(num_classes, num_features)
-		self.num_hidden_channels = num_hidden_channels
-		# override the normalizer fc: one node (output) for each feature map channel
-		self.normalizer_fc = nn.Linear(in_features=self.num_classes, out_features=self.num_hidden_channels, bias=bias)
-		if init_0_weights:
-			self.normalizer_fc.weight.data.fill_(0.0)
-			if bias:
-				self.normalizer_fc.bias.data.fill_(0.0)
+		input = nested_output if self.use_raw_output else nested_probs
+		return self.nonlinear(self.normalizer_fc(input).view(shaped_nested_features.size())).view(nested_features.size())
+
+class ChannelFeatureNormalizationLayer(AbstractFeatureNormalizationLayer):
+	"""
+	This layer normalizes convolutional channels, instead of individual features.
+	i.e all pixels in the same channel get the same weight
+	"""
+	def __init__(self, num_hidden_channels, num_classes, num_features, nonlinear, use_raw_output, init_0_weights=True, bias=False):
+		normalizer_fc = nn.Linear(in_features=num_classes, out_features=num_hidden_channels, bias=bias)
+		super(ChannelFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights)
 
 	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
 		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features, shaped_nested_features)
 		normalized_features = (shaped_nested_features * feature_normalizers).view(nested_features.size())
 		return normalized_features
+
 	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self._project_to_channels(nested_output)
+		input = nested_output if self.use_raw_output else nested_probs
+		return self._project_to_channels(input)
+
 	def _project_to_channels(self, outputs):
-		return self.softmax(self.normalizer_fc(outputs)).unsqueeze(2).unsqueeze(3)
-
-class FeatureNormalizationLayer_ProbabilityOutput_Raw(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self.normalizer_fc(nested_probs)
-class FeatureNormalizationLayer_ProbabilityOutput_Sigmoid(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self.sigmoid(self.normalizer_fc(nested_probs))
-class FeatureNormalizationLayer_ProbabilityOutput_Tanh(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self.tanh(self.normalizer_fc(nested_probs))
-class FeatureNormalizationLayer_ProbabilityOutput_Softmax_Global(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self.softmax(self.normalizer_fc(nested_probs))
-class FeatureNormalizationLayer_ProbabilityOutput_Softmax_Channelwise(AbstractFeatureNormalizationLayer):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self.softmax2d(self.normalizer_fc(nested_probs).view(shaped_nested_features.size())).view(nested_features.size())
-class FeatureNormalizationLayer_ProbabilityOutput_Softmax_GlobalChannelwise(FeatureNormalizationLayer_RawOutput_Softmax_GlobalChannelwise):
-	def feature_normalizers(self, nested_output, nested_probs, nested_features, shaped_nested_features):
-		return self._project_to_channels(nested_probs)
-
+		return self.nonlinear(self.normalizer_fc(outputs)).unsqueeze(2).unsqueeze(3)
 
