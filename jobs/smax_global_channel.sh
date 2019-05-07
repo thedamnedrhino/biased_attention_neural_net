@@ -2,7 +2,7 @@
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8000
-#SBATCH --time=0-01:0
+#SBATCH --time=0-02:00
 #SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
