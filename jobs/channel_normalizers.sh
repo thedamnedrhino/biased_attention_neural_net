@@ -6,14 +6,14 @@
 #SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-1535
+#SBATCH --array=1536-3071
 
 mkdir -p temp
 
 # %x is the job name
 
 # NETS=(reg fcN featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Smax_g featNRO_Smax_ch featNPO_Smax_g featNPO_Smax_ch)
-NETS=(featNRO_Smax_g_ch featNPO_Smax_g_ch)
+NETS=(featNRO_Smax_g_ch featNPO_Smax_g_ch featNRO_S_g_ch featNPO_S_g_ch)
 BIASES=(True False)
 INIT_0_WEIGHTS=(True False)
 REGULARIZATION_TYPES=(l1 l2 cos)
@@ -56,10 +56,10 @@ FREEZE_TEXT=${FREEZE_TEXTS[${FREEZE_INDEX}]}
 AUGMENT=${AUGMENTS[${AUGMENT_INDEX}]}
 AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
 
-FILE_NAME=${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_init_0-${INIT_0}_bias-${BIAS}
-OUTPUT_FOLDER=running/smax_global_channel
+FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_init_0-${INIT_0}_bias-${BIAS}
+OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/channel_normalizers}
 mkdir -p ${OUTPUT_FOLDER}
 
 source startup.sh
-python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out
+python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out 2> ${OUTPUT_FOLDER}/${FILE_NAME}.err
 
