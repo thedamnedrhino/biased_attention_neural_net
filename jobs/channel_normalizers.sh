@@ -6,7 +6,7 @@
 #SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
-#SBATCH --array=1536-3071
+#SBATCH --array=0-3071
 
 mkdir -p temp
 
@@ -59,7 +59,10 @@ AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
 FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_init_0-${INIT_0}_bias-${BIAS}
 OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/channel_normalizers}
 mkdir -p ${OUTPUT_FOLDER}
+mkdir -p ${OUTPUT_FOLDER}/outs
+mkdir -p ${OUTPUT_FOLDER}/errs
 
 source startup.sh
-python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out 2> ${OUTPUT_FOLDER}/${FILE_NAME}.err
+
+python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out 2> ${OUTPUT_FOLDER}/errs/${FILE_NAME}.err
 
