@@ -342,14 +342,15 @@ class FCNormalizedNet(AbstractExtendedNet):
 
 		output = self.fc1(self._linearize_features_(normalized_features))
 
-		output, nested_output = self.softmax(output), self.softmax(nested_output)
+		output, nested_output = self.nonlinear(output), self.nonlinear(nested_output)
 
 		if self.include_original:
 			output = torch.cat((output, nested_output), 1)
 
 		output = self.fc2(output)
 
-		self.metrics.batch_run(output, nested_output)
+		if self.super_verbose:
+			self.metrics.batch_run(output, nested_output)
 		# self.normalizeds, self.normals = output, nested_output
 
 		return output
@@ -560,7 +561,7 @@ class PerFeatureNormalizationLayer(AbstractFeatureNormalizationLayer):
 	"""
 	def __init__(self, num_classes, num_features, nonlinear, use_raw_output, init_0_weights=False, bias=True):
 		normalizer_fc = nn.Linear(in_features=num_classes, out_features=num_features, bias=bias)
-		super(PerFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights)
+		super(PerFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights, bias)
 
 	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
 		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features, shaped_nested_features)
@@ -589,7 +590,7 @@ class ChannelFeatureNormalizationLayer(AbstractFeatureNormalizationLayer):
 	"""
 	def __init__(self, num_hidden_channels, num_classes, num_features, nonlinear, use_raw_output, init_0_weights=True, bias=False):
 		normalizer_fc = nn.Linear(in_features=num_classes, out_features=num_hidden_channels, bias=bias)
-		super(ChannelFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights)
+		super(ChannelFeatureNormalizationLayer, self).__init__(num_classes, num_features, normalizer_fc, nonlinear, use_raw_output, init_0_weights, bias)
 
 	def normalize_features(self, nested_output, nested_probs, nested_features, shaped_nested_features):
 		feature_normalizers = self.feature_normalizers(nested_output, nested_probs, nested_features, shaped_nested_features)
