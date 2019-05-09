@@ -200,7 +200,7 @@ class NetworkManager:
 	BASE_NETS = list(BASE_NET_MAP.keys())
 	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu',
 			base_aggregate_feature_count=None, base_net_args={}, extended_aggregate_feature_count=None,
-			extended_net_args={}, train_on_validation=False, super_verbose=False):
+			extended_net_args={}, train_on_validation=False, super_verbose=False, save_model_file=False, model_file_name='convnet.model', silent=False):
 		"""
 		limit: limit the size of the dataset
 		train_transformers: list from ['hor', 'rot', 'gray', 'affine', 'rrcrop'], uses default set if None is provided
@@ -217,6 +217,9 @@ class NetworkManager:
 		self.train_on_validation = train_on_validation
 		self.augment = augment
 		self.super_verbose = super_verbose
+		self.save_model_file = save_model_file
+		self.model_file_name = model_file_name
+		self.silent = silent
 		self.toggle_super_verbosity(0)
 
 		#Create model, optimizer and loss function
@@ -271,7 +274,7 @@ class NetworkManager:
 			self.test_loader = dataset.create_testloader(self.datadir, limit=self.limit)
 
 
-	def train(self, num_epochs, save_model_file_name):
+	def train(self, num_epochs):
 		self.__init('train')
 
 		model = self.model
@@ -349,12 +352,13 @@ class NetworkManager:
 
 			# Save the model if the validate acc is greater than our current best
 			if validate_acc > best_acc:
-				self.save_models(epoch, save_model_file_name, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
+				self.save_models(epoch, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
 				best_acc = validate_acc
 
 
 			# Print the metrics
-			print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
+			if not self.silent:
+				print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
 			sys.stdout.flush()
 
 	def validate(self):
@@ -413,7 +417,6 @@ class NetworkManager:
 		#Compute the average acc and loss over all 10000 validate images
 		validate_acc = validate_acc / len(validate_loader.dataset)
 
-		print("validation accuracy: {}".format(validate_acc))
 		return validate_acc, validate_labels
 
 	def test(self, label_file_name='testlabel.pickle'):
@@ -448,13 +451,15 @@ class NetworkManager:
 			model.load_state_dict(torch.load(checkpoint_name))
 
 
-	def save_models(self, epoch, model_file_name, accuracy=None):
-		torch.save(self.model.state_dict(), model_file_name.format(epoch))
+	def save_models(self, epoch, accuracy=None):
+		if self.save_model_file:
+			torch.save(self.model.state_dict(), self.model_file_name.format(epoch))
+			if not self.silent:
+				print("checkpoint saved")
 		if accuracy is not None:
-			file_name = model_file_name + '.accuracy'
+			file_name = self.model_file_name + '.accuracy'
 			with open(file_name, 'w') as f:
 				f.write("epoch: {}, accuracy: {}\n".format(epoch, accuracy))
-		print("checkpoint saved")
 
 	def save_labels(self, labels, file_name):
 		with open(file_name, 'wb') as f:
@@ -511,8 +516,13 @@ if __name__ == "__main__":
 	optparser.add_argument("--base-net", default="simple", dest='basenet', choices=NetworkManager.BASE_NETS, help="which base net to use. Choose from [{}]".format(', '.join(NetworkManager.BASE_NETS)))
 	optparser.add_argument("--non-linear", dest="nonlinear", default="sigmoid", help="The non-linear to use for the two_FC and diff_FC base nets 'relu', 'tanh', 'sigmoid', 'none'. Has no effect with the simple base")
 	optparser.add_argument("-f", "--aggregate-feature-count", dest="aggregatefeaturecount", default=None, type=int, help="the number of aggregate features, i.e fully connected nodes in the first FC after the last convolution. (Not in effect for the simple net)")
+	optparser.add_argument("-s", "--save-model-file", dest="savemodelfile", default=False, action="store_true", help="whether to save the torch model file")
+	optparser.add_argument("--silent", dest="silent", default=False, action="store_true", help="disable output printing (epoch accuracy)")
 	#todo implement -n option
 	opts = optparser.parse_args()
+	save_model_file = opts.savemodelfile
+	model_file_name = opts.modelfilename
+	silent = opts.silent
 	epochs = int(opts.epochs)
 	batch_size = opts.batchsize
 	kernel_size = int(opts.kernelsize)
@@ -558,14 +568,14 @@ if __name__ == "__main__":
 		transformers = []
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
-	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear,
+	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, save_model_file=save_model_file, model_file_name=model_file_name, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear,
 			base_aggregate_feature_count=aggregate_feature_count, extended_aggregate_feature_count=aggregate_feature_count,
 			base_net_args=base_net_args,
 			extended_net_args=extended_net_args,
-			train_on_validation=merge_validation, super_verbose=super_verbose)
+			train_on_validation=merge_validation, super_verbose=super_verbose, silent=silent)
 
 	if not validate_only and not test_only:
-		net_man.train(epochs, opts.modelfilename)
+		net_man.train(epochs)
 	if validate_only:
 		accuracy, labels = net_man.validate()
 		# validate_only is also the file name!
