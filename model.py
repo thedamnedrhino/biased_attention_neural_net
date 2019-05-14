@@ -198,6 +198,13 @@ class NetworkManager:
 		'diff_fc': SimpleNet_ClassDifferentiatedFC
 		}
 	BASE_NETS = list(BASE_NET_MAP.keys())
+
+	"""
+	ACCURACY_CUTOFFS, format: [(epoch, minimum best accuracy)], must be sorted in descending order of epoch
+	see self.should_continue_training
+	"""
+	ACCURACY_CUTOFFS = [(50, 0.78)]
+
 	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu',
 			base_aggregate_feature_count=None, base_net_args={}, extended_aggregate_feature_count=None,
 			extended_net_args={}, train_on_validation=False, super_verbose=False, save_model_file=False, model_file_name='convnet.model', silent=False):
@@ -237,6 +244,7 @@ class NetworkManager:
 		self.static_learning_rate = static_learning_rate
 		self.optimizer = Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0.0001)
 		self.loss_fn = nn.CrossEntropyLoss()
+		self.accuracy_cutoffs = type(self).ACCURACY_CUTOFFS
 
 	def create_model(self, hidden_channels, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, base_aggregate_feature_count=None, extended_aggregate_feature_count=None, base_net_args={}):
 		model = self.create_base_model(aggregate_feature_count=base_aggregate_feature_count, hidden_channels=hidden_channels, net_name=base_net, nonlinear=nonlinear, net_args=base_net_args)
@@ -283,6 +291,7 @@ class NetworkManager:
 		loss_fn = self.loss_fn
 
 		best_acc = 0.0
+		accuracies = []
 		for epoch in range(num_epochs):
 			self.toggle_super_verbosity(best_acc)
 			model.super_verbose = self.is_super_verbose
@@ -349,7 +358,7 @@ class NetworkManager:
 
 			#Evaluate on the validate set
 			validate_acc, validate_labels = self.validate()
-
+			accuracies.append(validate_acc)
 			# Save the model if the validate acc is greater than our current best
 			if validate_acc > best_acc:
 				self.save_models(epoch, accuracy={'validation_acc': validate_acc.item(), 'train_acc': train_acc.item(), 'train_loss': train_loss})
@@ -359,7 +368,18 @@ class NetworkManager:
 			# Print the metrics
 			if not self.silent:
 				print("Epoch {}, Train Accuracy: {} , TrainLoss: {} , validate Accuracy: {}".format(epoch, train_acc, train_loss,validate_acc))
+
+			if not self.should_continue_training(epoch, accuracies, best_acc):
+				self.print('breaking off training at epoch {} with best accuracy {}'.format(epoch, best_acc))
+				break
+
 			sys.stdout.flush()
+
+	def should_continue_training(self, epoch, accuracies, best_accuracy):
+		for e, cutoff in self.accuracy_cutoffs:
+			if epoch > e:
+				return best_accuracy > cutoff
+		return True
 
 	def validate(self):
 		self.__init('validate')
@@ -464,6 +484,10 @@ class NetworkManager:
 	def save_labels(self, labels, file_name):
 		with open(file_name, 'wb') as f:
 			pickle.dump(labels, f)
+
+	def print(self, text):
+		if not self.silent:
+			print(text)
 
 #create a learning rate adjustment function that divides the learning rate by 10 every 30 epochs
 	def adjust_learning_rate(self, epoch):
