@@ -3,17 +3,16 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8000
 #SBATCH --time=0-01:00
-#SBATCH --output=%x_%a.out
-#SBATCH --error=%x_%a.err
+#SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-161
+#SBATCH --array=0-215
 
 # %x is the job name
 
 NETS=(two_fc diff_fc)
 AGGREGATE_FEATURE_COUNTS=(18 36 72)
-NON_LINEARS=(relu sigmoid tanh)
+NON_LINEARS=(none relu sigmoid tanh)
 REGULARIZATION_TYPES=(l1 l2 cos)
 REGULARIZATION_RATES=('0.01' '0.1' 0)
 
