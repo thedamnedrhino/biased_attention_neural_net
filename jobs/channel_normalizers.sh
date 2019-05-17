@@ -29,10 +29,10 @@ FREEZE_TEXTS=(freeze unfreeze)
 AUGMENT_TEXTS=(no_augment augment)
 
 JOB_NUM=${SLURM_ARRAY_TASK_ID}
-let AUGMENT_INDEX=${JOB_NUM}%2
-let JOB_NUM=${JOB_NUM}/2
-let FREEZE_INDEX=${JOB_NUM}%2
-let JOB_NUM=${JOB_NUM}/2
+# let AUGMENT_INDEX=${JOB_NUM}%2
+# let JOB_NUM=${JOB_NUM}/2
+# let FREEZE_INDEX=${JOB_NUM}%2
+# let JOB_NUM=${JOB_NUM}/2
 let NON_LINEAR_INDEX=${JOB_NUM}%4
 let JOB_NUM=${JOB_NUM}/4
 let REGULARIZATION_RATE_INDEX=${JOB_NUM}%4
@@ -53,16 +53,18 @@ REGULARIZATION_RATE=${REGULARIZATION_RATES[${REGULARIZATION_RATE_INDEX}]}
 NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
 FREEZE=${FREEZES[${FREEZE_INDEX}]}
 FREEZE_TEXT=${FREEZE_TEXTS[${FREEZE_INDEX}]}
-AUGMENT=${AUGMENTS[${AUGMENT_INDEX}]}
-AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
+# AUGMENT=${AUGMENTS[${AUGMENT_INDEX}]}
+# AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
 
-FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_init_0-${INIT_0}_bias-${BIAS}
+FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_init_0-${INIT_0}_bias-${BIAS}
+
 OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/${SLURM_JOB_NAME}}
+
 mkdir -p ${OUTPUT_FOLDER}
 mkdir -p ${OUTPUT_FOLDER}/outs
 mkdir -p ${OUTPUT_FOLDER}/errs
 
 source startup.sh
 
-python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out 2> ${OUTPUT_FOLDER}/errs/${FILE_NAME}.err
+python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 

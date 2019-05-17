@@ -2,13 +2,13 @@
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8000
-#SBATCH --time=0-01:00
-#SBATCH --output=%x_%a.out
-#SBATCH --error=%x_%a.err
+#SBATCH --time=0-02:00
+#SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
 #SBATCH --array=0-17
 
+mkdir -p temp/
 # %x is the job name
 
 NETS=(two_fc diff_fc)
@@ -24,10 +24,10 @@ NET=${NETS[${NET_INDEX}]}
 AGGREGATE_FEATURE_COUNT=${AGGREGATE_FEATURE_COUNTS[${AGGREGATE_FEATURE_COUNT_INDEX}]}
 NON_LINEAR=${NON_LINEARS[${NON_LINEAR_INDEX}]}
 
-OUTPUT_FOLDER=${OUTPUT_FOLDER:-'experiment_outputs/different_base_nets'}
+OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/${SLURM_JOB_NAME}}
 mkdir -p ${OUTPUT_FOLDER}
-FILE_NAME=${OUTPUT_FOLDER}/${NET}_${NON_LINEAR}_agg_feat-${AGGREGATE_FEATURE_COUNT}
+FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_agg_feat-${AGGREGATE_FEATURE_COUNT}
 
 source startup.sh
-python model.py -e 120 -d '../datasets' -a -m ${FILE_NAME}.model  --base-net=${NET} -f ${AGGREGATE_FEATURE_COUNT} --non-linear=${NON_LINEAR} > ${FILE_NAME}.out
+python model.py -e 120 -d '../datasets' -a -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  --base-net=${NET} -f ${AGGREGATE_FEATURE_COUNT} --non-linear=${NON_LINEAR} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 
