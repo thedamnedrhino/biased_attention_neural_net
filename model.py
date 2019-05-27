@@ -205,7 +205,7 @@ class NetworkManager:
 	"""
 	ACCURACY_CUTOFFS = [(50, 0.78)]
 
-	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu',
+	def __init__(self, batch_size=BATCH_SIZE, limit=None, kernel_size=KERNEL_SIZE, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, static_learning_rate=STATIC_LEARNING_RATE, datadir='datasets/', cifar10=False, augment=AUGMENT, train_transformers=None, checkpoint_file_name=None, base_net=BASE_NETS[0], extended_net=False, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear='relu',
 			base_aggregate_feature_count=None, base_net_args={}, extended_aggregate_feature_count=None,
 			extended_net_args={}, train_on_validation=False, super_verbose=False, save_model_file=False, model_file_name='convnet.model', silent=False):
 		"""
@@ -221,6 +221,7 @@ class NetworkManager:
 		self.limit = limit
 		self.train_transformers = train_transformers
 		self.datadir = datadir
+		self.cifar10 = cifar10
 		self.train_on_validation = train_on_validation
 		self.augment = augment
 		self.super_verbose = super_verbose
@@ -228,9 +229,10 @@ class NetworkManager:
 		self.model_file_name = model_file_name
 		self.silent = silent
 		self.toggle_super_verbosity(0)
+		num_classes = 10 if cifar10 else 3
 
 		#Create model, optimizer and loss function
-		self.model = self.create_model(hidden_channels, base_net, bool(extended_net), bool(checkpoint_file_name), extended_net,base_net_args=base_net_args, extended_net_args=extended_net_args, checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=nonlinear,
+		self.model = self.create_model(hidden_channels, num_classes, base_net, bool(extended_net), bool(checkpoint_file_name), extended_net, base_net_args=base_net_args, extended_net_args=extended_net_args, checkpoint_file_name=checkpoint_file_name, extended_checkpoint=extended_checkpoint, unfreeze_basefc=unfreeze_basefc, unfreeze_all=unfreeze_all, nonlinear=nonlinear,
 				base_aggregate_feature_count=base_aggregate_feature_count, extended_aggregate_feature_count=extended_aggregate_feature_count)
 
 		#Check if gpu support is available
@@ -246,8 +248,8 @@ class NetworkManager:
 		self.loss_fn = nn.CrossEntropyLoss()
 		self.accuracy_cutoffs = type(self).ACCURACY_CUTOFFS
 
-	def create_model(self, hidden_channels, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, base_aggregate_feature_count=None, extended_aggregate_feature_count=None, base_net_args={}):
-		model = self.create_base_model(aggregate_feature_count=base_aggregate_feature_count, hidden_channels=hidden_channels, net_name=base_net, nonlinear=nonlinear, net_args=base_net_args)
+	def create_model(self, hidden_channels, num_classes, base_net, extended, load_saved, extended_net_name='', extended_net_args={}, checkpoint_file_name=None, extended_checkpoint=False, unfreeze_basefc=False, unfreeze_all=False, nonlinear=None, base_aggregate_feature_count=None, extended_aggregate_feature_count=None, base_net_args={}):
+		model = self.create_base_model(aggregate_feature_count=base_aggregate_feature_count, hidden_channels=hidden_channels, num_classes=num_classes, net_name=base_net, nonlinear=nonlinear, net_args=base_net_args)
 		if load_saved and not extended_checkpoint:
 			self.load_checkpoint(model, checkpoint_file_name)
 
@@ -266,18 +268,18 @@ class NetworkManager:
 
 		return model
 
-	def create_base_model(self, aggregate_feature_count, hidden_channels, net_name, nonlinear, net_args={}):
+	def create_base_model(self, aggregate_feature_count, hidden_channels, num_classes, net_name, nonlinear, net_args={}):
 		net_class = type(self).BASE_NET_MAP[net_name]
-		return net_class(aggregate_feature_count=aggregate_feature_count, hidden_channels=hidden_channels, nonlinear=nonlinear, **net_args)
+		return net_class(aggregate_feature_count=aggregate_feature_count, hidden_channels=hidden_channels, num_classes=num_classes, nonlinear=nonlinear, **net_args)
 
 	def __init(self, set):
 		if set == 'train':
-			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers, limit=self.limit)
+			self.train_loader = dataset.create_dataloader(self.datadir, 'train', self.batch_size, self.augment, transformers=self.train_transformers, limit=self.limit, cifar10=self.cifar10)
 		elif set == 'validate':
 			if not self.train_on_validation:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, shuffle=False, transformers=[], limit=self.limit)
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, False, shuffle=False, transformers=[], limit=self.limit, cifar10=self.cifar10)
 			else:
-				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, shuffle=True, transformers=train_transformers, limit=self.limit)
+				self.validate_loader = dataset.create_dataloader(self.datadir, 'valid', self.batch_size, self.augment, shuffle=True, transformers=train_transformers, limit=self.limit, cifar10=self.cifar10)
 		elif set == 'test':
 			self.test_loader = dataset.create_testloader(self.datadir, limit=self.limit)
 
@@ -542,6 +544,7 @@ if __name__ == "__main__":
 	optparser.add_argument("-f", "--aggregate-feature-count", dest="aggregatefeaturecount", default=None, type=int, help="the number of aggregate features, i.e fully connected nodes in the first FC after the last convolution. (Not in effect for the simple net)")
 	optparser.add_argument("-s", "--save-model-file", dest="savemodelfile", default=False, action="store_true", help="whether to save the torch model file")
 	optparser.add_argument("--silent", dest="silent", default=False, action="store_true", help="disable output printing (epoch accuracy)")
+	optparser.add_argument("--cifar-10", dest="cifar10", default=False, action="store_true", help="use the cifar-10 dataset")
 	#todo implement -n option
 	opts = optparser.parse_args()
 	save_model_file = opts.savemodelfile
@@ -552,6 +555,7 @@ if __name__ == "__main__":
 	kernel_size = int(opts.kernelsize)
 	hidden_channels = int(opts.hiddenchannels)
 	datadir = opts.datadir
+	cifar10 = opts.cifar10
 	augment = opts.augment
 	transformers = opts.transformers
 	checkpoint_name = opts.checkpointname
@@ -592,7 +596,7 @@ if __name__ == "__main__":
 		transformers = []
 	else:
 		transformers = transformers.split(',') if transformers is not None else None
-	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, save_model_file=save_model_file, model_file_name=model_file_name, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear,
+	net_man = NetworkManager(batch_size, opts.limit, kernel_size, hidden_channels, learning_rate, static_learning_rate, datadir, cifar10, augment, train_transformers=transformers, checkpoint_file_name=checkpoint_name, base_net=opts.basenet, extended_net=network if extended else False, extended_checkpoint=extended_checkpoint, save_model_file=save_model_file, model_file_name=model_file_name, unfreeze_basefc=unfreeze_basefc, unfreeze_all=opts.unfreezeall, nonlinear=nonlinear,
 			base_aggregate_feature_count=aggregate_feature_count, extended_aggregate_feature_count=aggregate_feature_count,
 			base_net_args=base_net_args,
 			extended_net_args=extended_net_args,

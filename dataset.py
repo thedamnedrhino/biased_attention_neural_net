@@ -1,6 +1,7 @@
 import data
 
 import torch
+import torchvision
 from torchvision import transforms
 import numpy as np
 
@@ -60,12 +61,16 @@ TRANSFORMERS = {
 'rrcrop': transforms.RandomResizedCrop((32, 32))
 }
 
-def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment_enabled=False, augment_label=2, transformers=None, shuffle=True, limit=None):
-	d = data.get_data(datadir, set, limit=limit)
-	if augment_enabled:
-		augmented = augment(d, augment_label)
-	transformers = [TRANSFORMERS[i] for i in transformers] if transformers is not None else None
-	dset = Dataset(d, set, transformers=transformers)
+def create_dataloader(datadir='./datasets', set='train', batch_size=10, augment_enabled=False, augment_label=2, transformers=None, shuffle=True, limit=None, cifar10=False):
+	if cifar10:
+		transform = transforms.ToTensor()
+		dset = torchvision.datasets.CIFAR10(root=datadir, train=(set == 'train'), download=True, transform=transform)
+	else:
+		d = data.get_data(datadir, set, limit=limit)
+		if augment_enabled:
+			augmented = augment(d, augment_label)
+		transformers = [TRANSFORMERS[i] for i in transformers] if transformers is not None else None
+		dset = Dataset(d, set, transformers=transformers)
 	dloader = torch.utils.data.DataLoader(dataset=dset, batch_size=batch_size, shuffle=shuffle)
 	return dloader
 def create_testloader(datadir='./datasets', limit=None):
