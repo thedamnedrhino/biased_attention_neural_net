@@ -1,13 +1,17 @@
 #!/bin/bash
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16000
-#SBATCH --time=0-01:30
-#SBATCH --output=%x.out
+#SBATCH --mem=6000
+#SBATCH --time=0:45:0
+#SBATCH --output=temp/%x.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
 # %x is the job name
+mkdir -p temp
+
+OUTPUT_FOLDER=running/${SLURM_JOB_NAME}
+mkdir -p $OUTPUT_FOLDER
 
 source startup.sh
-python model.py -e ${NUM_EPOCHS:-50} -d '../datasets' -a -m ${SLURM_JOB_NAME}.model  -l ${MODEL_NAME:-'outputs/regular.model'} ${RUN_FLAGS:-''}
+python model.py -e 120 -d '../datasets' -a -m $OUTPUT_FOLDER/$SLURM_JOB_NAME.model  -l ${MODEL_NAME:-'outputs/regular.model'} > ${OUTPUT_FOLDER}/$SLURM_JOB_NAME.out
 
