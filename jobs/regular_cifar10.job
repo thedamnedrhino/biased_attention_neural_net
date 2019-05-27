@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --account=def-functor
+#SBATCH --gres=gpu:1
+#SBATCH --mem=6000
+#SBATCH --time=0-02:30
+#SBATCH --output=temp/%x_%a.out
+#SBATCH --mail-user=fsharifb@sfu.ca
+#SBATCH --mail-type=ALL
+#SBATCH --array=0-10
+# %x is the job name
+
+mkdir -p temp
+source startup.sh
+
+JOB_NUM=${SLURM_ARRAY_TASK_ID}
+OUTPUT_DIR=${OUTPUT_DIR:-running/${SLURM_JOB_NAME}}
+mkdir -p ${OUTPUT_DIR}
+
+python model.py -e 120 -d '../datasets' -s --cifar-10 -m ${OUTPUT_DIR}/${JOB_NUM}_regular.model > ${OUTPUT_DIR}/${JOB_NUM}_regular.out
+
