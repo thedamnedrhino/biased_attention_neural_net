@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32000
-#SBATCH --time=0-01:0
+#SBATCH --mem=8000
+#SBATCH --time=0-02:0
 #SBATCH --output=%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
@@ -51,7 +51,7 @@ FREEZE_TEXT=${FREEZE_TEXTS[${FREEZE_INDEX}]}
 AUGMENT=${AUGMENTS[${AUGMENT_INDEX}]}
 AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
 
-CHECKPOINT=outputs/diff_base_cifar10/${BASE_NET}_${NON_LINEAR}_cifar10.model
+CHECKPOINT=outputs/diff_base_cifar10/${BASE_NET}_${NON_LINEAR}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_cifar10.model
 FILE_NAME=${SLURM_ARRAY_TASK_ID}_${BASE_NET}_${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_cifar10
 OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/${SLURM_JOB_NAME}}
 
