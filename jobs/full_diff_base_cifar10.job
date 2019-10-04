@@ -6,14 +6,14 @@
 #SBATCH --output=%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-5183
+#SBATCH --array=0-1151
 
 # %x is the job name
 
 BASE_NETS=(two_fc diff_fc)
 NETS=(reg fcN featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Smax_g featNRO_Smax_ch featNPO_Smax_g featNPO_Smax_ch featNRO_Smax_g_ch featNPO_Smax_g_ch featNRO_S_g_ch featNPO_S_g_ch)
 REGULARIZATION_TYPES=(l1 l2 cos)
-REGULARIZATION_RATES=(0 0.01 0.1 1)
+REGULARIZATION_RATES=(0 0.01 0.1)
 NON_LINEARS=(none relu sigmoid tanh)
 
 # these two are hardcoded to cut down on experiments
@@ -58,8 +58,9 @@ OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/${SLURM_JOB_NAME}}
 source startup.sh
 
 mkdir -p ${OUTPUT_FOLDER}
+mkdir -p ${OUTPUT_FOLDER}/outs
 
-python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out
+python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 
-python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.out
+python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}_retrained.out
 
