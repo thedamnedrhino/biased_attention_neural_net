@@ -62,5 +62,5 @@ mkdir -p ${OUTPUT_FOLDER}/outs
 
 python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 
-python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}_retrained.out
+python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  --extended-checkpoint -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}_retrained.out
 
