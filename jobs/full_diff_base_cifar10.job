@@ -10,6 +10,9 @@
 
 # %x is the job name
 
+SLURM_JOB_NAME=${SLURM_JOB_NAME:-"oct4"}
+SLURM_ARRAY_TASK_ID=100
+
 BASE_NETS=(two_fc diff_fc)
 NETS=(reg fcN featNRO_R featNRO_S featNRO_Th featNPO_R featNPO_S featNPO_Th featNRO_Smax_g featNRO_Smax_ch featNPO_Smax_g featNPO_Smax_ch featNRO_Smax_g_ch featNPO_Smax_g_ch featNRO_S_g_ch featNPO_S_g_ch)
 REGULARIZATION_TYPES=(l1 l2 cos)
@@ -54,12 +57,15 @@ AUGMENT_TEXT=${AUGMENT_TEXTS[${AUGMENT_INDEX}]}
 CHECKPOINT=outputs/diff_base_cifar10/${BASE_NET}_${NON_LINEAR}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_cifar10.model
 FILE_NAME=${SLURM_ARRAY_TASK_ID}_${BASE_NET}_${NET}_${NON_LINEAR}_${FREEZE_TEXT}_${AUGMENT_TEXT}_regul-${REGULARIZATION_TYPE}-at-${REGULARIZATION_RATE}_cifar10
 OUTPUT_FOLDER=${OUTPUT_FOLDER:-running/${SLURM_JOB_NAME}}
+OUTPUT_FOLDER=testing/${SLURM_JOB_NAME}
 
 source startup.sh
 
 mkdir -p ${OUTPUT_FOLDER}
 
-python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out
+echo $CHECKPOINT
+echo "python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}.out"
+python model.py -e 3 --limit 10 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l ${CHECKPOINT} --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE}
 
-python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.out
+#python model.py -e 120 -d '../datasets' --cifar-10 -s ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --non-linear=${NON_LINEAR} -x --base-net=${BASE_NET} -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.out
 
