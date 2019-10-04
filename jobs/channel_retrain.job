@@ -2,7 +2,7 @@
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
 #SBATCH --mem=6000
-#SBATCH --time=0-02:00
+#SBATCH --time=0-00:45
 #SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
@@ -87,7 +87,7 @@ mkdir -p ${OUTPUT_FOLDER}/outs
 
 source startup.sh
 
-python model.py -e 120 -d '../datasets' ${AUGMENT} -s -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
+#python model.py -e 120 -d '../datasets' ${AUGMENT} -s -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  -l 'outputs/regular.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 
-python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrain.model  -l ${OUTPUT_FOLDER}/${FILE_NAME}.model -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}_retrain.out
+python model.py -e 120 -d '../datasets' ${AUGMENT} -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrain.model  --extended-checkpoint -l ${OUTPUT_FOLDER}/${FILE_NAME}.model -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} bias=${BIAS} init_0_weights=${INIT_0_WEIGHTS} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}_retrain.out
 

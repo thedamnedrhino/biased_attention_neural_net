@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --account=def-functor
 #SBATCH --gres=gpu:1
-#SBATCH --mem=8000
-#SBATCH --time=0-01:30
+#SBATCH --mem=4000
+#SBATCH --time=0-00:30
 #SBATCH --output=temp/%x_%a.out
 #SBATCH --mail-user=fsharifb@sfu.ca
 #SBATCH --mail-type=ALL
-#SBATCH --array=212,40,228,52,25,120,24,251,31,227,225,72,345,237,111
+#SBATCH --array=0-359
 
 # %x is the job name
 
@@ -71,4 +71,3 @@ FILE_NAME=${SLURM_ARRAY_TASK_ID}_${NET}_${NON_LINEAR}_regul-${REGULARIZATION_TYP
 source startup.sh
 python model.py -e 120 -s --cifar-10 -d '../datasets' -m ${OUTPUT_FOLDER}/${FILE_NAME}.model  ${AUGMENT} -l 'outputs/regular_cifar10.model' -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
 
-python model.py -e 120 --cifar-10 -d '../datasets' -m ${OUTPUT_FOLDER}/${FILE_NAME}_retrained.model  ${AUGMENT} -l ${OUTPUT_FOLDER}/${FILE_NAME}.model --extended-checkpoint -x -n ${NET} --net-args nonlinear=${NON_LINEAR} regularization_type=${REGULARIZATION_TYPE} regularization_rate=${REGULARIZATION_RATE} ${FREEZE} > ${OUTPUT_FOLDER}/outs/${FILE_NAME}.out
