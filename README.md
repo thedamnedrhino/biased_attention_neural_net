@@ -1,5 +1,11 @@
-# Cat-Dog-Frog Classifier
-This is a project to classify 32x32 images from the CIFAR-10 dataset with three categories: dogs, cats and frogs. They can be found in the 'data.zip' archive.
+# "Biased" Attention
+
+This is a project to test how a high level bias on attention can impact neural networks.  
+It's inspired by how bias impacts cognition in humans. In practice, this means attention layers on the first layers of the networks that take the last layer as input. Writing this years after the conception of the project, perhaps **_preconception_** 
+is a more suitable alternative to _bias_.
+
+We classify 32x32 images from the CIFAR-10 dataset with three categories, and look at how adding these attention layers
+impacts the network's performance while keeping the network size constant.
 
 ## Installing
 
